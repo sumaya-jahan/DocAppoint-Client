@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const DoctorCard = ({ doctor }) => {
     return (
         <div className="card bg-base-100 shadow-xl">
@@ -18,9 +20,11 @@ const DoctorCard = ({ doctor }) => {
                 <p>Experience: {doctor.experience}</p>
                 <p>Fee: ৳{doctor.fee}</p>
 
-                <button className="btn btn-primary mt-3">
-                    View Details
-                </button>
+                <Link to={`/doctor/${doctor.id}`}>
+                    <button className="btn btn-primary mt-3">
+                        View Details
+                    </button>
+                </Link>
             </div>
         </div>
     );
