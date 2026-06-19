@@ -47,6 +47,54 @@ const Home = () => {
                     ))}
                 </div>
             </section>
+
+            {/* Why Choose Us */}
+            <section className="max-w-7xl mx-auto px-6 py-16">
+                <h2 className="text-4xl font-bold text-center mb-12">
+                    Why Choose DocAppoint?
+                </h2>
+
+                <div className="grid md:grid-cols-3 gap-8">
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body text-center">
+                            <h3 className="text-2xl font-bold">
+                                Verified Doctors
+                            </h3>
+
+                            <p>
+                                Connect with experienced and verified doctors
+                                from different specialties.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body text-center">
+                            <h3 className="text-2xl font-bold">
+                                Easy Booking
+                            </h3>
+
+                            <p>
+                                Schedule appointments quickly with a simple
+                                and user-friendly booking system.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body text-center">
+                            <h3 className="text-2xl font-bold">
+                                Secure Management
+                            </h3>
+
+                            <p>
+                                Manage bookings and profile information
+                                securely from your dashboard.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 };
