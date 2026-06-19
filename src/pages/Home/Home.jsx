@@ -60,10 +60,9 @@ const Home = () => {
                             <h3 className="text-2xl font-bold">
                                 Verified Doctors
                             </h3>
-
                             <p>
-                                Connect with experienced and verified doctors
-                                from different specialties.
+                                Connect with experienced and verified doctors from
+                                different specialties.
                             </p>
                         </div>
                     </div>
@@ -73,10 +72,9 @@ const Home = () => {
                             <h3 className="text-2xl font-bold">
                                 Easy Booking
                             </h3>
-
                             <p>
-                                Schedule appointments quickly with a simple
-                                and user-friendly booking system.
+                                Schedule appointments quickly with a simple and
+                                user-friendly booking system.
                             </p>
                         </div>
                     </div>
@@ -86,11 +84,58 @@ const Home = () => {
                             <h3 className="text-2xl font-bold">
                                 Secure Management
                             </h3>
-
                             <p>
-                                Manage bookings and profile information
-                                securely from your dashboard.
+                                Manage bookings and profile information securely
+                                from your dashboard.
                             </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Patient Testimonials */}
+            <section className="max-w-7xl mx-auto px-6 py-16">
+                <h2 className="text-4xl font-bold text-center mb-12">
+                    What Our Patients Say
+                </h2>
+
+                <div className="grid md:grid-cols-3 gap-8">
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body">
+                            <p>
+                                "The booking process was very smooth. I found the
+                                right doctor within minutes."
+                            </p>
+
+                            <h3 className="font-bold mt-4">
+                                — Rahim Uddin
+                            </h3>
+                        </div>
+                    </div>
+
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body">
+                            <p>
+                                "Excellent service. Managing appointments has never
+                                been this easy."
+                            </p>
+
+                            <h3 className="font-bold mt-4">
+                                — Nusrat Jahan
+                            </h3>
+                        </div>
+                    </div>
+
+                    <div className="card bg-base-100 shadow-xl">
+                        <div className="card-body">
+                            <p>
+                                "The doctors are highly professional and the platform
+                                is very user friendly."
+                            </p>
+
+                            <h3 className="font-bold mt-4">
+                                — Mahmud Hasan
+                            </h3>
                         </div>
                     </div>
                 </div>
