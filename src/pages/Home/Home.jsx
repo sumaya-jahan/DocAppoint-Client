@@ -1,6 +1,10 @@
+import doctors from "../../data/doctors";
+import DoctorCard from "../../components/DoctorCard";
+
 const Home = () => {
     return (
         <div>
+            {/* Hero Section */}
             <section className="max-w-7xl mx-auto px-6 py-20">
                 <div className="grid md:grid-cols-2 gap-10 items-center">
                     <div>
@@ -25,6 +29,22 @@ const Home = () => {
                             className="rounded-2xl shadow-lg"
                         />
                     </div>
+                </div>
+            </section>
+
+            {/* Top Rated Doctors */}
+            <section className="max-w-7xl mx-auto px-6 py-16">
+                <h2 className="text-4xl font-bold text-center mb-10">
+                    Top Rated Doctors
+                </h2>
+
+                <div className="grid md:grid-cols-3 gap-8">
+                    {doctors.map((doctor) => (
+                        <DoctorCard
+                            key={doctor.id}
+                            doctor={doctor}
+                        />
+                    ))}
                 </div>
             </section>
         </div>
