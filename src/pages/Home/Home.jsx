@@ -2,6 +2,10 @@ import doctors from "../../data/doctors";
 import DoctorCard from "../../components/DoctorCard";
 
 const Home = () => {
+    const topDoctors = [...doctors]
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 3);
+
     return (
         <div>
             {/* Hero Section */}
@@ -39,7 +43,7 @@ const Home = () => {
                 </h2>
 
                 <div className="grid md:grid-cols-3 gap-8">
-                    {doctors.map((doctor) => (
+                    {topDoctors.map((doctor) => (
                         <DoctorCard
                             key={doctor.id}
                             doctor={doctor}

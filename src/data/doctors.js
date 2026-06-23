@@ -26,6 +26,33 @@ const doctors = [
         rating: 4.7,
         image: "https://randomuser.me/api/portraits/women/65.jpg",
     },
+    {
+        id: "d4",
+        name: "Dr. Tanvir Ahmed",
+        specialty: "Orthopedic",
+        experience: "15 Years",
+        fee: 1200,
+        rating: 4.6,
+        image: "https://randomuser.me/api/portraits/men/75.jpg",
+    },
+    {
+        id: "d5",
+        name: "Dr. Farhana Islam",
+        specialty: "Pediatrician",
+        experience: "9 Years",
+        fee: 900,
+        rating: 4.5,
+        image: "https://randomuser.me/api/portraits/women/22.jpg",
+    },
+    {
+        id: "d6",
+        name: "Dr. Rakib Hossain",
+        specialty: "ENT Specialist",
+        experience: "11 Years",
+        fee: 850,
+        rating: 4.4,
+        image: "https://randomuser.me/api/portraits/men/15.jpg",
+    },
 ];
 
 export default doctors;
