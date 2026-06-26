@@ -10,6 +10,8 @@ import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
 import Error404 from "../pages/Error404/Error404";
 
+import PrivateRoute from "../routes/PrivateRoute";
+
 const router = createBrowserRouter([
     {
         path: "/",
@@ -26,11 +28,19 @@ const router = createBrowserRouter([
             },
             {
                 path: "/doctor/:id",
-                element: <DoctorDetails />,
+                element: (
+                    <PrivateRoute>
+                        <DoctorDetails />
+                    </PrivateRoute>
+                ),
             },
             {
                 path: "/dashboard",
-                element: <Dashboard />,
+                element: (
+                    <PrivateRoute>
+                        <Dashboard />
+                    </PrivateRoute>
+                ),
             },
             {
                 path: "/login",

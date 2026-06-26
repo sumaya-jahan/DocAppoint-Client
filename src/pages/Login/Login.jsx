@@ -1,6 +1,55 @@
-import { Link } from "react-router-dom";
+import { useContext } from "react";
+import {
+    Link,
+    useNavigate,
+    useLocation,
+} from "react-router-dom";
+import toast from "react-hot-toast";
+
+import { AuthContext } from "../../providers/AuthProvider";
 
 const Login = () => {
+    const {
+        signInUser,
+        googleLogin,
+    } = useContext(AuthContext);
+
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = location.state || "/";
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+
+        const form = e.target;
+
+        const email = form.email.value;
+        const password = form.password.value;
+
+        try {
+            await signInUser(email, password);
+
+            toast.success("Login successful!");
+
+            navigate(from, { replace: true });
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        try {
+            await googleLogin();
+
+            toast.success("Login successful!");
+
+            navigate(from, { replace: true });
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center px-4">
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
@@ -9,20 +58,33 @@ const Login = () => {
                         Login
                     </h1>
 
-                    <form className="space-y-4">
+                    <form
+                        onSubmit={handleLogin}
+                        className="space-y-4"
+                    >
                         <div>
-                            <label className="label">Email</label>
+                            <label className="label">
+                                Email
+                            </label>
+
                             <input
                                 type="email"
+                                name="email"
+                                required
                                 placeholder="Enter your email"
                                 className="input input-bordered w-full"
                             />
                         </div>
 
                         <div>
-                            <label className="label">Password</label>
+                            <label className="label">
+                                Password
+                            </label>
+
                             <input
                                 type="password"
+                                name="password"
+                                required
                                 placeholder="Enter your password"
                                 className="input input-bordered w-full"
                             />
@@ -39,7 +101,10 @@ const Login = () => {
                         </button>
                     </form>
 
-                    <button className="btn btn-outline w-full mt-4">
+                    <button
+                        onClick={handleGoogleLogin}
+                        className="btn btn-outline w-full mt-4"
+                    >
                         Continue with Google
                     </button>
 
