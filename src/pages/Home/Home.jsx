@@ -1,7 +1,16 @@
-import doctors from "../../data/doctors";
+import { useEffect, useState } from "react";
 import DoctorCard from "../../components/DoctorCard";
 
 const Home = () => {
+    const [doctors, setDoctors] = useState([]);
+
+    useEffect(() => {
+        fetch("http://localhost:5000/doctors")
+            .then((res) => res.json())
+            .then((data) => setDoctors(data))
+            .catch((error) => console.log(error));
+    }, []);
+
     const topDoctors = [...doctors]
         .sort((a, b) => b.rating - a.rating)
         .slice(0, 3);
@@ -17,8 +26,8 @@ const Home = () => {
                         </h1>
 
                         <p className="mt-6 text-gray-600">
-                            Find trusted doctors, schedule appointments, and manage your
-                            healthcare journey with DocAppoint.
+                            Find trusted doctors, schedule appointments, and
+                            manage your healthcare journey with DocAppoint.
                         </p>
 
                         <button className="btn btn-primary mt-6">
@@ -65,8 +74,8 @@ const Home = () => {
                                 Verified Doctors
                             </h3>
                             <p>
-                                Connect with experienced and verified doctors from
-                                different specialties.
+                                Connect with experienced and verified doctors
+                                from different specialties.
                             </p>
                         </div>
                     </div>
@@ -107,8 +116,8 @@ const Home = () => {
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
                             <p>
-                                "The booking process was very smooth. I found the
-                                right doctor within minutes."
+                                "The booking process was very smooth. I found
+                                the right doctor within minutes."
                             </p>
 
                             <h3 className="font-bold mt-4">
@@ -120,8 +129,8 @@ const Home = () => {
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
                             <p>
-                                "Excellent service. Managing appointments has never
-                                been this easy."
+                                "Excellent service. Managing appointments has
+                                never been this easy."
                             </p>
 
                             <h3 className="font-bold mt-4">
@@ -133,8 +142,8 @@ const Home = () => {
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
                             <p>
-                                "The doctors are highly professional and the platform
-                                is very user friendly."
+                                "The doctors are highly professional and the
+                                platform is very user friendly."
                             </p>
 
                             <h3 className="font-bold mt-4">
