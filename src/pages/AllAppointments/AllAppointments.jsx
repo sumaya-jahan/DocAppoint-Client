@@ -1,9 +1,16 @@
-import { useState } from "react";
-import doctors from "../../data/doctors";
+import { useEffect, useState } from "react";
 import DoctorCard from "../../components/DoctorCard";
 
 const AllAppointments = () => {
+    const [doctors, setDoctors] = useState([]);
     const [search, setSearch] = useState("");
+
+    useEffect(() => {
+        fetch("http://localhost:5000/doctors")
+            .then((res) => res.json())
+            .then((data) => setDoctors(data))
+            .catch((error) => console.log(error));
+    }, []);
 
     const filteredDoctors = doctors.filter((doctor) =>
         doctor.name.toLowerCase().includes(search.toLowerCase())
