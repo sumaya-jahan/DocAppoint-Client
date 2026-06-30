@@ -6,9 +6,12 @@ const AllAppointments = () => {
     const [search, setSearch] = useState("");
 
     useEffect(() => {
-        fetch("http://localhost:5000/doctors")
+        fetch("https://docappoint-server-uvkv.onrender.com/doctors")
             .then((res) => res.json())
-            .then((data) => setDoctors(data))
+            .then((data) => {
+                console.log(data);
+                setDoctors(data);
+            })
             .catch((error) => console.log(error));
     }, []);
 

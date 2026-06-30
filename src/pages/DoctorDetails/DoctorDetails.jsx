@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 const DoctorDetails = () => {
     const { id } = useParams();
@@ -8,7 +8,7 @@ const DoctorDetails = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`http://localhost:5000/doctors/${id}`)
+        fetch(`https://docappoint-server-uvkv.onrender.com/doctors/${id}`)
             .then((res) => res.json())
             .then((data) => {
                 setDoctor(data);
@@ -71,9 +71,11 @@ const DoctorDetails = () => {
                         </p>
                     </div>
 
-                    <button className="btn btn-primary mt-8">
-                        Book Appointment
-                    </button>
+                    <Link to={`/book/${doctor.id}`}>
+                        <button className="btn btn-primary w-full mt-8">
+                            Book Appointment
+                        </button>
+                    </Link>
 
                 </div>
             </div>

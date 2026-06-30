@@ -5,6 +5,7 @@ import MainLayout from "../layouts/MainLayout";
 import Home from "../pages/Home/Home";
 import AllAppointments from "../pages/AllAppointments/AllAppointments";
 import DoctorDetails from "../pages/DoctorDetails/DoctorDetails";
+import BookAppointment from "../pages/BookAppointment/BookAppointment";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
@@ -31,6 +32,14 @@ const router = createBrowserRouter([
                 element: (
                     <PrivateRoute>
                         <DoctorDetails />
+                    </PrivateRoute>
+                ),
+            },
+            {
+                path: "/book/:id",
+                element: (
+                    <PrivateRoute>
+                        <BookAppointment />
                     </PrivateRoute>
                 ),
             },
