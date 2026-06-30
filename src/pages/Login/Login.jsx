@@ -28,7 +28,33 @@ const Login = () => {
         const password = form.password.value;
 
         try {
-            await signInUser(email, password);
+            const result = await signInUser(
+                email,
+                password
+            );
+
+            const user = {
+                email: result.user.email,
+            };
+
+            const jwtRes = await fetch(
+                "https://docappoint-server-uvkv.onrender.com/jwt",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify(user),
+                }
+            );
+
+            const jwtData = await jwtRes.json();
+
+            localStorage.setItem(
+                "access-token",
+                jwtData.token
+            );
 
             toast.success("Login successful!");
 
@@ -40,11 +66,36 @@ const Login = () => {
 
     const handleGoogleLogin = async () => {
         try {
-            await googleLogin();
+            const result = await googleLogin();
+
+            const user = {
+                email: result.user.email,
+            };
+
+            const jwtRes = await fetch(
+                "https://docappoint-server-uvkv.onrender.com/jwt",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify(user),
+                }
+            );
+
+            const jwtData = await jwtRes.json();
+
+            localStorage.setItem(
+                "access-token",
+                jwtData.token
+            );
 
             toast.success("Login successful!");
 
-            navigate(from, { replace: true });
+            navigate(from, {
+                replace: true,
+            });
         } catch (error) {
             toast.error(error.message);
         }
