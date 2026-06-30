@@ -55,6 +55,11 @@ const MyBookings = () => {
 
             const data = await res.json();
 
+            console.log(user.email);
+            console.log(data);
+
+            setBookings(data);
+            
             if (data.deletedCount > 0) {
                 setBookings(
                     bookings.filter(
