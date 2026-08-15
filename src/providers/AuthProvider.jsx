@@ -26,6 +26,7 @@ const AuthProvider = ({ children }) => {
 
     const createUser = (email, password) => {
         setLoading(true);
+
         return createUserWithEmailAndPassword(
             auth,
             email,
@@ -35,6 +36,7 @@ const AuthProvider = ({ children }) => {
 
     const signInUser = (email, password) => {
         setLoading(true);
+
         return signInWithEmailAndPassword(
             auth,
             email,
@@ -44,6 +46,7 @@ const AuthProvider = ({ children }) => {
 
     const googleLogin = () => {
         setLoading(true);
+
         return signInWithPopup(
             auth,
             googleProvider
@@ -54,18 +57,59 @@ const AuthProvider = ({ children }) => {
         return updateProfile(auth.currentUser, {
             displayName: name,
             photoURL: photo,
+        }).then(() => {
+            setUser({
+                ...auth.currentUser,
+            });
         });
     };
 
     const logOut = () => {
+        localStorage.removeItem("access-token");
         return signOut(auth);
     };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(
             auth,
-            (currentUser) => {
+            async (currentUser) => {
                 setUser(currentUser);
+
+                if (currentUser?.email) {
+                    try {
+                        const res = await fetch(
+                            "https://docappoint-server-uvkv.onrender.com/jwt",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                    email: currentUser.email,
+                                }),
+                            }
+                        );
+
+                        const data = await res.json();
+
+                        if (data.token) {
+                            localStorage.setItem(
+                                "access-token",
+                                data.token
+                            );
+                        }
+                    } catch (error) {
+                        console.error(
+                            "JWT error:",
+                            error
+                        );
+                    }
+                } else {
+                    localStorage.removeItem(
+                        "access-token"
+                    );
+                }
+
                 setLoading(false);
             }
         );
