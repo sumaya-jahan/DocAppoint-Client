@@ -13,6 +13,7 @@ const Register = () => {
     const navigate = useNavigate();
 
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -21,9 +22,9 @@ const Register = () => {
 
         const form = e.target;
 
-        const name = form.name.value;
-        const email = form.email.value;
-        const photo = form.photo.value;
+        const name = form.name.value.trim();
+        const email = form.email.value.trim();
+        const photo = form.photo.value.trim();
         const password = form.password.value;
 
         if (!/[A-Z]/.test(password)) {
@@ -45,6 +46,8 @@ const Register = () => {
         }
 
         try {
+            setLoading(true);
+
             await createUser(email, password);
 
             await updateUserProfile(
@@ -58,26 +61,71 @@ const Register = () => {
 
             navigate("/login");
         } catch (err) {
-            setError(err.message);
+            console.error(err);
+
+            setError(
+                err.message ||
+                "Registration failed!"
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleGoogleLogin = async () => {
         try {
-            await googleLogin();
+            setLoading(true);
+
+            const result =
+                await googleLogin();
+
+            const jwtRes = await fetch(
+                "https://docappoint-server-uvkv.onrender.com/jwt",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: result.user.email,
+                    }),
+                }
+            );
+
+            const jwtData = await jwtRes.json();
+
+            if (!jwtRes.ok || !jwtData.token) {
+                throw new Error(
+                    jwtData.message ||
+                    "Failed to generate token"
+                );
+            }
+
+            localStorage.setItem(
+                "access-token",
+                jwtData.token
+            );
 
             toast.success(
-                "Login successful!"
+                "Google signup successful!"
             );
 
             navigate("/");
         } catch (err) {
-            toast.error(err.message);
+            console.error(err);
+
+            toast.error(
+                err.message ||
+                "Google signup failed!"
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="min-h-screen flex items-center justify-center px-4 py-10">
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
                 <div className="card-body">
                     <h1 className="text-4xl font-bold text-center mb-6">
@@ -122,10 +170,10 @@ const Register = () => {
                             </label>
 
                             <input
-                                type="text"
+                                type="url"
                                 name="photo"
                                 required
-                                placeholder="Photo URL"
+                                placeholder="https://example.com/photo.jpg"
                                 className="input input-bordered w-full"
                             />
                         </div>
@@ -145,19 +193,36 @@ const Register = () => {
                         </div>
 
                         {error && (
-                            <p className="text-red-500">
+                            <p className="text-red-500 text-sm">
                                 {error}
                             </p>
                         )}
 
-                        <button className="btn btn-primary w-full">
-                            Register
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn btn-primary w-full"
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                    Registering...
+                                </>
+                            ) : (
+                                "Register"
+                            )}
                         </button>
                     </form>
 
+                    <div className="divider">
+                        OR
+                    </div>
+
                     <button
+                        type="button"
                         onClick={handleGoogleLogin}
-                        className="btn btn-outline w-full mt-4"
+                        disabled={loading}
+                        className="btn btn-outline w-full"
                     >
                         Continue with Google
                     </button>

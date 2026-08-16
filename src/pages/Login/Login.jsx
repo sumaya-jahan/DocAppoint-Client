@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import {
     Link,
     useNavigate,
@@ -9,15 +9,48 @@ import toast from "react-hot-toast";
 import { AuthContext } from "../../providers/AuthProvider";
 
 const Login = () => {
-    const {
-        signInUser,
-        googleLogin,
-    } = useContext(AuthContext);
+    const { signInUser, googleLogin } =
+        useContext(AuthContext);
+
+    const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
     const location = useLocation();
 
-    const from = location.state || "/";
+    const from =
+        location.state?.from?.pathname ||
+        location.state ||
+        "/";
+
+    const getJwtToken = async (email) => {
+        const jwtRes = await fetch(
+            "https://docappoint-server-uvkv.onrender.com/jwt",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/json",
+                },
+                body: JSON.stringify({
+                    email,
+                }),
+            }
+        );
+
+        const jwtData = await jwtRes.json();
+
+        if (!jwtRes.ok || !jwtData.token) {
+            throw new Error(
+                jwtData.message ||
+                "Failed to generate authentication token"
+            );
+        }
+
+        localStorage.setItem(
+            "access-token",
+            jwtData.token
+        );
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -28,67 +61,15 @@ const Login = () => {
         const password = form.password.value;
 
         try {
+            setLoading(true);
+
             const result = await signInUser(
                 email,
                 password
             );
 
-            const user = {
-                email: result.user.email,
-            };
-
-            const jwtRes = await fetch(
-                "https://docappoint-server-uvkv.onrender.com/jwt",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
-                    body: JSON.stringify(user),
-                }
-            );
-
-            const jwtData = await jwtRes.json();
-
-            localStorage.setItem(
-                "access-token",
-                jwtData.token
-            );
-
-            toast.success("Login successful!");
-
-            navigate(from, { replace: true });
-        } catch (error) {
-            toast.error(error.message);
-        }
-    };
-
-    const handleGoogleLogin = async () => {
-        try {
-            const result = await googleLogin();
-
-            const user = {
-                email: result.user.email,
-            };
-
-            const jwtRes = await fetch(
-                "https://docappoint-server-uvkv.onrender.com/jwt",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
-                    body: JSON.stringify(user),
-                }
-            );
-
-            const jwtData = await jwtRes.json();
-
-            localStorage.setItem(
-                "access-token",
-                jwtData.token
+            await getJwtToken(
+                result.user.email
             );
 
             toast.success("Login successful!");
@@ -97,12 +78,47 @@ const Login = () => {
                 replace: true,
             });
         } catch (error) {
-            toast.error(error.message);
+            console.error(error);
+
+            toast.error(
+                error.message ||
+                "Login failed!"
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        try {
+            setLoading(true);
+
+            const result =
+                await googleLogin();
+
+            await getJwtToken(
+                result.user.email
+            );
+
+            toast.success("Login successful!");
+
+            navigate(from, {
+                replace: true,
+            });
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                error.message ||
+                "Google login failed!"
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="min-h-screen flex items-center justify-center px-4 py-10">
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
                 <div className="card-body">
                     <h1 className="text-4xl font-bold text-center mb-6">
@@ -142,19 +158,36 @@ const Login = () => {
                         </div>
 
                         <div className="text-right">
-                            <a className="text-sm text-primary cursor-pointer">
+                            <span className="text-sm text-primary">
                                 Forgot Password?
-                            </a>
+                            </span>
                         </div>
 
-                        <button className="btn btn-primary w-full">
-                            Login
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn btn-primary w-full"
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                    Logging in...
+                                </>
+                            ) : (
+                                "Login"
+                            )}
                         </button>
                     </form>
 
+                    <div className="divider">
+                        OR
+                    </div>
+
                     <button
+                        type="button"
                         onClick={handleGoogleLogin}
-                        className="btn btn-outline w-full mt-4"
+                        disabled={loading}
+                        className="btn btn-outline w-full"
                     >
                         Continue with Google
                     </button>
