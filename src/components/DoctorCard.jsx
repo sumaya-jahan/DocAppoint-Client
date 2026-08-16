@@ -1,8 +1,29 @@
-import { Link } from "react-router-dom";
+import { useContext } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { AuthContext } from "../providers/AuthProvider";
 
 const DoctorCard = ({ doctor }) => {
+    const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleViewDetails = () => {
+        if (user) {
+            navigate(`/doctor/${doctor.id}`);
+        } else {
+            navigate("/login", {
+                state: {
+                    from: {
+                        pathname: `/doctor/${doctor.id}`,
+                    },
+                    previous: location.pathname,
+                },
+            });
+        }
+    };
+
     return (
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-base-100 shadow-xl h-full">
             <figure className="p-4">
                 <img
                     src={doctor.image}
@@ -11,7 +32,7 @@ const DoctorCard = ({ doctor }) => {
                 />
             </figure>
 
-            <div className="card-body text-center">
+            <div className="card-body text-center flex flex-col">
                 <h2 className="card-title justify-center">
                     {doctor.name}
                 </h2>
@@ -20,11 +41,14 @@ const DoctorCard = ({ doctor }) => {
                 <p>Experience: {doctor.experience}</p>
                 <p>Fee: ৳{doctor.fee}</p>
 
-                <Link to={`/doctor/${doctor.id}`}>
-                    <button className="btn btn-primary mt-3">
+                <div className="mt-auto">
+                    <button
+                        onClick={handleViewDetails}
+                        className="btn btn-primary mt-3"
+                    >
                         View Details
                     </button>
-                </Link>
+                </div>
             </div>
         </div>
     );
