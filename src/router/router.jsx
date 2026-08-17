@@ -20,43 +20,55 @@ const router = createBrowserRouter([
         errorElement: <Error404 />,
         children: [
             {
-                path: "/",
+                index: true,
                 element: <Home />,
             },
+
+            // Home alias
             {
-                path: "/appointments",
+                path: "home",
+                element: <Home />,
+            },
+
+            {
+                path: "appointments",
                 element: <AllAppointments />,
             },
+
             {
-                path: "/doctor/:id",
+                path: "doctor/:id",
                 element: (
                     <PrivateRoute>
                         <DoctorDetails />
                     </PrivateRoute>
                 ),
             },
+
             {
-                path: "/book/:id",
+                path: "book/:id",
                 element: (
                     <PrivateRoute>
                         <BookAppointment />
                     </PrivateRoute>
                 ),
             },
+
             {
-                path: "/dashboard",
+                path: "dashboard",
                 element: (
                     <PrivateRoute>
                         <Dashboard />
                     </PrivateRoute>
                 ),
             },
+
             {
-                path: "/login",
+                path: "login",
                 element: <Login />,
             },
+
             {
-                path: "/register",
+                path: "register",
                 element: <Register />,
             },
         ],

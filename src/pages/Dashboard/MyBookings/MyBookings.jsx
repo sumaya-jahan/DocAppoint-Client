@@ -7,6 +7,8 @@ const MyBookings = () => {
 
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [updateLoading, setUpdateLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(null);
 
     const [selectedBooking, setSelectedBooking] =
         useState(null);
@@ -19,118 +21,192 @@ const MyBookings = () => {
         appointmentTime: "",
     });
 
+    // =========================
+    // LOAD BOOKINGS
+    // =========================
     useEffect(() => {
         if (!user?.email) {
-            setLoading(false);
             return;
         }
 
         const loadBookings = async () => {
             try {
+                setLoading(true);
+
+                const token =
+                    localStorage.getItem("access-token");
+
                 const res = await fetch(
-                    `https://docappoint-server-uvkv.onrender.com/appointments?email=${user.email}`,
+                    `https://docappoint-server-uvkv.onrender.com/appointments?email=${encodeURIComponent(
+                        user.email
+                    )}`,
                     {
                         headers: {
-                            authorization: `Bearer ${localStorage.getItem(
-                                "access-token"
-                            )}`,
+                            authorization: `Bearer ${token}`,
                         },
                     }
                 );
 
                 const data = await res.json();
 
+                if (!res.ok) {
+                    throw new Error(
+                        data.message ||
+                        "Failed to load appointments"
+                    );
+                }
+
                 setBookings(data);
             } catch (error) {
-                console.log(error);
+                console.error(error);
+
+                toast.error(
+                    error.message ||
+                    "Failed to load appointments."
+                );
             } finally {
                 setLoading(false);
             }
         };
 
         loadBookings();
-    }, [user]);
+    }, [user?.email]);
 
+    // =========================
+    // DELETE BOOKING
+    // =========================
     const handleDelete = async (id) => {
+        const confirmDelete = window.confirm(
+            "Are you sure you want to delete this appointment?"
+        );
+
+        if (!confirmDelete) {
+            return;
+        }
+
         try {
+            setDeleteLoading(id);
+
+            const token =
+                localStorage.getItem("access-token");
+
             const res = await fetch(
                 `https://docappoint-server-uvkv.onrender.com/appointments/${id}`,
                 {
                     method: "DELETE",
                     headers: {
-                        authorization: `Bearer ${localStorage.getItem(
-                            "access-token"
-                        )}`,
+                        authorization: `Bearer ${token}`,
                     },
                 }
             );
 
             const data = await res.json();
 
-            if (data.deletedCount > 0) {
-                const remaining = bookings.filter(
-                    (booking) => booking._id !== id
+            if (!res.ok) {
+                throw new Error(
+                    data.message ||
+                    "Failed to delete appointment"
                 );
+            }
 
-                setBookings(remaining);
+            if (data.deletedCount > 0) {
+                setBookings((currentBookings) =>
+                    currentBookings.filter(
+                        (booking) =>
+                            booking._id !== id
+                    )
+                );
 
                 toast.success(
                     "Appointment deleted successfully!"
                 );
             }
         } catch (error) {
-            console.log(error);
+            console.error(error);
+
+            toast.error(
+                error.message ||
+                "Failed to delete appointment."
+            );
+        } finally {
+            setDeleteLoading(null);
         }
     };
 
+    // =========================
+    // OPEN UPDATE MODAL
+    // =========================
     const handleOpenModal = (booking) => {
         setSelectedBooking(booking);
 
         setFormData({
-            patientName: booking.patientName,
-            gender: booking.gender,
-            phone: booking.phone,
+            patientName:
+                booking.patientName || "",
+            gender: booking.gender || "",
+            phone: booking.phone || "",
             appointmentDate:
-                booking.appointmentDate,
+                booking.appointmentDate || "",
             appointmentTime:
-                booking.appointmentTime,
+                booking.appointmentTime || "",
         });
 
         document
             .getElementById("update_modal")
-            .showModal();
+            ?.showModal();
     };
 
+    // =========================
+    // INPUT CHANGE
+    // =========================
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
+        const { name, value } = e.target;
+
+        setFormData((previous) => ({
+            ...previous,
+            [name]: value,
+        }));
     };
 
+    // =========================
+    // UPDATE BOOKING
+    // =========================
     const handleUpdate = async (e) => {
         e.preventDefault();
 
-        const res = await fetch(
-            `https://docappoint-server-uvkv.onrender.com/appointments/${selectedBooking._id}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type":
-                        "application/json",
-                    authorization: `Bearer ${localStorage.getItem(
-                        "access-token"
-                    )}`,
-                },
-                body: JSON.stringify(formData),
+        if (!selectedBooking?._id) {
+            return;
+        }
+
+        try {
+            setUpdateLoading(true);
+
+            const token =
+                localStorage.getItem("access-token");
+
+            const res = await fetch(
+                `https://docappoint-server-uvkv.onrender.com/appointments/${selectedBooking._id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                        authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(formData),
+                }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(
+                    data.message ||
+                    "Failed to update appointment"
+                );
             }
-        );
 
-        const data = await res.json();
-
-        if (data.modifiedCount > 0) {
-            const updated = bookings.map(
-                (booking) =>
+            setBookings((currentBookings) =>
+                currentBookings.map((booking) =>
                     booking._id ===
                         selectedBooking._id
                         ? {
@@ -138,394 +214,384 @@ const MyBookings = () => {
                             ...formData,
                         }
                         : booking
+                )
             );
-
-            setBookings(updated);
 
             document
                 .getElementById("update_modal")
-                .close();
+                ?.close();
+
+            setSelectedBooking(null);
 
             toast.success(
                 "Appointment updated successfully!"
             );
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="text-center py-20">
-                <span className="loading loading-spinner loading-lg"></span>
-            </div>
-        );
-    }
-
-    return (
-        <div className="max-w-6xl mx-auto px-6 py-10">
-            <h2 className="text-3xl font-bold mb-8">
-                My Bookings
-            </h2>
-
-            {bookings.length === 0 ? (
-                <p className="text-center text-gray-500">
-                    No bookings found.
-                </p>
-            ) : (
-                <div className="space-y-5">
-                    import { useContext, useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { AuthContext } from "../../../providers/AuthProvider";
-
-const MyBookings = () => {
-    const { user } = useContext(AuthContext);
-
-    const [bookings, setBookings] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    const [selectedBooking, setSelectedBooking] =
-        useState(null);
-
-    const [formData, setFormData] = useState({
-        patientName: "",
-        gender: "",
-        phone: "",
-        appointmentDate: "",
-        appointmentTime: "",
-    });
-
-    useEffect(() => {
-        if (!user?.email) {
-            setLoading(false);
-            return;
-        }
-
-        const loadBookings = async () => {
-            try {
-                const res = await fetch(
-                    `https://docappoint-server-uvkv.onrender.com/appointments?email=${user.email}`,
-                    {
-                        headers: {
-                            authorization: `Bearer ${localStorage.getItem(
-                                "access-token"
-                            )}`,
-                        },
-                    }
-                );
-
-                const data = await res.json();
-
-                setBookings(data);
-            } catch (error) {
-                console.log(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadBookings();
-    }, [user]);
-
-    const handleDelete = async (id) => {
-        try {
-            const res = await fetch(
-                `https://docappoint-server-uvkv.onrender.com/appointments/${id}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        authorization: `Bearer ${localStorage.getItem(
-                            "access-token"
-                        )}`,
-                    },
-                }
-            );
-
-            const data = await res.json();
-
-            if (data.deletedCount > 0) {
-                const remaining = bookings.filter(
-                    (booking) => booking._id !== id
-                );
-
-                setBookings(remaining);
-
-                toast.success(
-                    "Appointment deleted successfully!"
-                );
-            }
         } catch (error) {
-            console.log(error);
+            console.error(error);
+
+            toast.error(
+                error.message ||
+                "Failed to update appointment."
+            );
+        } finally {
+            setUpdateLoading(false);
         }
     };
 
-    const handleOpenModal = (booking) => {
-        setSelectedBooking(booking);
-
-        setFormData({
-            patientName: booking.patientName,
-            gender: booking.gender,
-            phone: booking.phone,
-            appointmentDate:
-                booking.appointmentDate,
-            appointmentTime:
-                booking.appointmentTime,
-        });
-
-        document
-            .getElementById("update_modal")
-            .showModal();
-    };
-
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-
-        const res = await fetch(
-            `https://docappoint-server-uvkv.onrender.com/appointments/${selectedBooking._id}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type":
-                        "application/json",
-                    authorization: `Bearer ${localStorage.getItem(
-                        "access-token"
-                    )}`,
-                },
-                body: JSON.stringify(formData),
-            }
-        );
-
-        const data = await res.json();
-
-        if (data.modifiedCount > 0) {
-            const updated = bookings.map(
-                (booking) =>
-                    booking._id ===
-                    selectedBooking._id
-                        ? {
-                              ...booking,
-                              ...formData,
-                          }
-                        : booking
-            );
-
-            setBookings(updated);
-
-            document
-                .getElementById("update_modal")
-                .close();
-
-            toast.success(
-                "Appointment updated successfully!"
-            );
-        }
-    };
-
+    // =========================
+    // LOADING
+    // =========================
     if (loading) {
         return (
-            <div className="text-center py-20">
+            <div className="flex justify-center items-center py-20">
                 <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }
 
     return (
-        <div className="max-w-6xl mx-auto px-6 py-10">
-            <h2 className="text-3xl font-bold mb-8">
-                My Bookings
-            </h2>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            <div className="mb-8">
+                <h2 className="text-3xl md:text-4xl font-bold">
+                    My Bookings
+                </h2>
 
-            {bookings.length === 0 ? (
-                <p className="text-center text-gray-500">
-                    No bookings found.
+                <p className="text-gray-500 mt-2">
+                    Manage your doctor appointments.
                 </p>
+            </div>
+
+            {/* No Booking */}
+            {bookings.length === 0 ? (
+                <div className="text-center py-16 bg-base-100 rounded-2xl shadow">
+                    <h3 className="text-xl font-semibold">
+                        No bookings found
+                    </h3>
+
+                    <p className="text-gray-500 mt-2">
+                        You have not booked any appointments yet.
+                    </p>
+                </div>
             ) : (
-                <div className="space-y-5">
-                                    {bookings.map((booking) => (
-                                        <div
-                                            key={booking._id}
-                                            className="card bg-base-100 shadow-xl"
-                                        >
-                                            <div className="card-body">
-                                                <h3 className="card-title">
-                                                    {booking.doctorName}
-                                                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {bookings.map((booking) => (
+                        <div
+                            key={booking._id}
+                            className="card bg-base-100 shadow-xl h-full"
+                        >
+                            <div className="card-body">
+                                <h3 className="card-title text-2xl">
+                                    {booking.doctorName}
+                                </h3>
 
-                                                <p>
-                                                    <strong>Patient:</strong>{" "}
-                                                    {booking.patientName}
-                                                </p>
+                                <div className="space-y-2 mt-3">
+                                    <p>
+                                        <strong>
+                                            Patient:
+                                        </strong>{" "}
+                                        {
+                                            booking.patientName
+                                        }
+                                    </p>
 
-                                                <p>
-                                                    <strong>Phone:</strong>{" "}
-                                                    {booking.phone}
-                                                </p>
+                                    <p>
+                                        <strong>
+                                            Gender:
+                                        </strong>{" "}
+                                        {booking.gender}
+                                    </p>
 
-                                                <p>
-                                                    <strong>Date:</strong>{" "}
-                                                    {booking.appointmentDate}
-                                                </p>
+                                    <p>
+                                        <strong>
+                                            Phone:
+                                        </strong>{" "}
+                                        {booking.phone}
+                                    </p>
 
-                                                <p>
-                                                    <strong>Time:</strong>{" "}
-                                                    {booking.appointmentTime}
-                                                </p>
+                                    <p>
+                                        <strong>
+                                            Date:
+                                        </strong>{" "}
+                                        {
+                                            booking.appointmentDate
+                                        }
+                                    </p>
 
-                                                <div className="flex gap-3 mt-4">
-                                                    <button
-                                                        onClick={() =>
-                                                            handleOpenModal(
-                                                                booking
-                                                            )
-                                                        }
-                                                        className="btn btn-primary"
-                                                    >
-                                                        Update
-                                                    </button>
+                                    <p>
+                                        <strong>
+                                            Time:
+                                        </strong>{" "}
+                                        {
+                                            booking.appointmentTime
+                                        }
+                                    </p>
 
-                                                    <button
-                                                        onClick={() =>
-                                                            handleDelete(
-                                                                booking._id
-                                                            )
-                                                        }
-                                                        className="btn btn-error"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    <p className="break-all">
+                                        <strong>
+                                            Email:
+                                        </strong>{" "}
+                                        {booking.userEmail}
+                                    </p>
                                 </div>
-                            )}
 
-                            <dialog
-                                id="update_modal"
-                                className="modal"
-                            >
-                                <div className="modal-box">
-                                    <h3 className="font-bold text-xl mb-4">
-                                        Update Appointment
-                                    </h3>
-
-                                    <form
-                                        onSubmit={handleUpdate}
-                                        className="space-y-4"
+                                <div className="card-actions mt-auto pt-5">
+                                    <button
+                                        onClick={() =>
+                                            handleOpenModal(
+                                                booking
+                                            )
+                                        }
+                                        className="btn btn-primary flex-1"
                                     >
-                                        <input
-                                            type="text"
-                                            value={
-                                                selectedBooking?.doctorName ||
-                                                ""
-                                            }
-                                            readOnly
-                                            className="input input-bordered w-full"
-                                        />
+                                        Update
+                                    </button>
 
-                                        <input
-                                            type="email"
-                                            value={
-                                                selectedBooking?.userEmail ||
-                                                ""
-                                            }
-                                            readOnly
-                                            className="input input-bordered w-full"
-                                        />
-
-                                        <input
-                                            type="text"
-                                            name="patientName"
-                                            value={formData.patientName}
-                                            onChange={handleChange}
-                                            placeholder="Patient Name"
-                                            className="input input-bordered w-full"
-                                            required
-                                        />
-
-                                        <select
-                                            name="gender"
-                                            value={formData.gender}
-                                            onChange={handleChange}
-                                            className="select select-bordered w-full"
-                                            required
-                                        >
-                                            <option value="">
-                                                Select Gender
-                                            </option>
-                                            <option value="Male">
-                                                Male
-                                            </option>
-                                            <option value="Female">
-                                                Female
-                                            </option>
-                                        </select>
-
-                                        <input
-                                            type="text"
-                                            name="phone"
-                                            value={formData.phone}
-                                            onChange={handleChange}
-                                            placeholder="Phone"
-                                            className="input input-bordered w-full"
-                                            required
-                                        />
-
-                                        <input
-                                            type="date"
-                                            name="appointmentDate"
-                                            value={
-                                                formData.appointmentDate
-                                            }
-                                            onChange={handleChange}
-                                            className="input input-bordered w-full"
-                                            required
-                                        />
-
-                                        <input
-                                            type="text"
-                                            name="appointmentTime"
-                                            value={
-                                                formData.appointmentTime
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Appointment Time"
-                                            className="input input-bordered w-full"
-                                            required
-                                        />
-
-                                        <div className="modal-action">
-                                            <button
-                                                type="submit"
-                                                className="btn btn-primary"
-                                            >
-                                                Save
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                className="btn"
-                                                onClick={() =>
-                                                    document
-                                                        .getElementById(
-                                                            "update_modal"
-                                                        )
-                                                        .close()
-                                                }
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <button
+                                        onClick={() =>
+                                            handleDelete(
+                                                booking._id
+                                            )
+                                        }
+                                        disabled={
+                                            deleteLoading ===
+                                            booking._id
+                                        }
+                                        className="btn btn-error flex-1"
+                                    >
+                                        {deleteLoading ===
+                                            booking._id ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Deleting...
+                                            </>
+                                        ) : (
+                                            "Delete"
+                                        )}
+                                    </button>
                                 </div>
-                            </dialog>
+                            </div>
                         </div>
-                        );
+                    ))}
+                </div>
+            )}
+
+            {/* =========================
+                UPDATE MODAL
+            ========================= */}
+            <dialog
+                id="update_modal"
+                className="modal"
+            >
+                <div className="modal-box">
+                    <h3 className="font-bold text-2xl mb-5">
+                        Update Appointment
+                    </h3>
+
+                    <form
+                        onSubmit={handleUpdate}
+                        className="space-y-4"
+                    >
+                        {/* Doctor */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Doctor
+                                </span>
+                            </label>
+
+                            <input
+                                type="text"
+                                value={
+                                    selectedBooking?.doctorName ||
+                                    ""
+                                }
+                                readOnly
+                                className="input input-bordered w-full bg-base-200"
+                            />
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Email
+                                </span>
+                            </label>
+
+                            <input
+                                type="email"
+                                value={
+                                    selectedBooking?.userEmail ||
+                                    ""
+                                }
+                                readOnly
+                                className="input input-bordered w-full bg-base-200"
+                            />
+                        </div>
+
+                        {/* Patient Name */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Patient Name
+                                </span>
+                            </label>
+
+                            <input
+                                type="text"
+                                name="patientName"
+                                value={
+                                    formData.patientName
+                                }
+                                onChange={handleChange}
+                                className="input input-bordered w-full"
+                                required
+                            />
+                        </div>
+
+                        {/* Gender */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Gender
+                                </span>
+                            </label>
+
+                            <select
+                                name="gender"
+                                value={formData.gender}
+                                onChange={handleChange}
+                                className="select select-bordered w-full"
+                                required
+                            >
+                                <option value="">
+                                    Select Gender
+                                </option>
+
+                                <option value="Male">
+                                    Male
+                                </option>
+
+                                <option value="Female">
+                                    Female
+                                </option>
+
+                                <option value="Other">
+                                    Other
+                                </option>
+                            </select>
+                        </div>
+
+                        {/* Phone */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Phone
+                                </span>
+                            </label>
+
+                            <input
+                                type="tel"
+                                name="phone"
+                                value={formData.phone}
+                                onChange={handleChange}
+                                className="input input-bordered w-full"
+                                required
+                            />
+                        </div>
+
+                        {/* Date */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Appointment Date
+                                </span>
+                            </label>
+
+                            <input
+                                type="date"
+                                name="appointmentDate"
+                                value={
+                                    formData.appointmentDate
+                                }
+                                onChange={handleChange}
+                                min={
+                                    new Date()
+                                        .toISOString()
+                                        .split("T")[0]
+                                }
+                                className="input input-bordered w-full"
+                                required
+                            />
+                        </div>
+
+                        {/* Time */}
+                        <div>
+                            <label className="label">
+                                <span className="label-text">
+                                    Appointment Time
+                                </span>
+                            </label>
+
+                            <input
+                                type="text"
+                                name="appointmentTime"
+                                value={
+                                    formData.appointmentTime
+                                }
+                                onChange={handleChange}
+                                placeholder="10:30 AM"
+                                className="input input-bordered w-full"
+                                required
+                            />
+                        </div>
+
+                        <div className="modal-action">
+                            <button
+                                type="submit"
+                                disabled={updateLoading}
+                                className="btn btn-primary"
+                            >
+                                {updateLoading ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    "Save Changes"
+                                )}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn"
+                                onClick={() => {
+                                    document
+                                        .getElementById(
+                                            "update_modal"
+                                        )
+                                        ?.close();
+
+                                    setSelectedBooking(
+                                        null
+                                    );
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <form
+                    method="dialog"
+                    className="modal-backdrop"
+                >
+                    <button>close</button>
+                </form>
+            </dialog>
+        </div>
+    );
 };
 
-                        export default MyBookings;
+export default MyBookings;
