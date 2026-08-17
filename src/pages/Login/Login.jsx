@@ -7,6 +7,7 @@ import {
 import toast from "react-hot-toast";
 
 import { AuthContext } from "../../providers/AuthProvider";
+import PageTitle from "../../components/PageTitle";
 
 const Login = () => {
     const { signInUser, googleLogin } =
@@ -118,92 +119,96 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-10">
-            <div className="card w-full max-w-md bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h1 className="text-4xl font-bold text-center mb-6">
-                        Login
-                    </h1>
+        <>
+            <PageTitle title="Login" />
 
-                    <form
-                        onSubmit={handleLogin}
-                        className="space-y-4"
-                    >
-                        <div>
-                            <label className="label">
-                                Email
-                            </label>
+            <div className="min-h-screen flex items-center justify-center px-4 py-10">
+                <div className="card w-full max-w-md bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h1 className="text-4xl font-bold text-center mb-6">
+                            Login
+                        </h1>
 
-                            <input
-                                type="email"
-                                name="email"
-                                required
-                                placeholder="Enter your email"
-                                className="input input-bordered w-full"
-                            />
-                        </div>
+                        <form
+                            onSubmit={handleLogin}
+                            className="space-y-4"
+                        >
+                            <div>
+                                <label className="label">
+                                    Email
+                                </label>
 
-                        <div>
-                            <label className="label">
-                                Password
-                            </label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    required
+                                    placeholder="Enter your email"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
 
-                            <input
-                                type="password"
-                                name="password"
-                                required
-                                placeholder="Enter your password"
-                                className="input input-bordered w-full"
-                            />
-                        </div>
+                            <div>
+                                <label className="label">
+                                    Password
+                                </label>
 
-                        <div className="text-right">
-                            <span className="text-sm text-primary">
-                                Forgot Password?
-                            </span>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    required
+                                    placeholder="Enter your password"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
+
+                            <div className="text-right">
+                                <span className="text-sm text-primary">
+                                    Forgot Password?
+                                </span>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="btn btn-primary w-full"
+                            >
+                                {loading ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Logging in...
+                                    </>
+                                ) : (
+                                    "Login"
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="divider">
+                            OR
                         </div>
 
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={handleGoogleLogin}
                             disabled={loading}
-                            className="btn btn-primary w-full"
+                            className="btn btn-outline w-full"
                         >
-                            {loading ? (
-                                <>
-                                    <span className="loading loading-spinner loading-sm"></span>
-                                    Logging in...
-                                </>
-                            ) : (
-                                "Login"
-                            )}
+                            Continue with Google
                         </button>
-                    </form>
 
-                    <div className="divider">
-                        OR
+                        <p className="text-center mt-4">
+                            Don't have an account?{" "}
+                            <Link
+                                to="/register"
+                                className="text-primary font-semibold"
+                            >
+                                Register
+                            </Link>
+                        </p>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={handleGoogleLogin}
-                        disabled={loading}
-                        className="btn btn-outline w-full"
-                    >
-                        Continue with Google
-                    </button>
-
-                    <p className="text-center mt-4">
-                        Don't have an account?{" "}
-                        <Link
-                            to="/register"
-                            className="text-primary font-semibold"
-                        >
-                            Register
-                        </Link>
-                    </p>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

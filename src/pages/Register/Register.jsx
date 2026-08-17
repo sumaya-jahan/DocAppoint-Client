@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../providers/AuthProvider";
 import toast from "react-hot-toast";
+import PageTitle from "../../components/PageTitle";
 
 const Register = () => {
     const {
@@ -125,120 +126,124 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-10">
-            <div className="card w-full max-w-md bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <h1 className="text-4xl font-bold text-center mb-6">
-                        Register
-                    </h1>
+        <>
+            <PageTitle title="Register" />
 
-                    <form
-                        onSubmit={handleRegister}
-                        className="space-y-4"
-                    >
-                        <div>
-                            <label className="label">
-                                Name
-                            </label>
+            <div className="min-h-screen flex items-center justify-center px-4 py-10">
+                <div className="card w-full max-w-md bg-base-100 shadow-xl">
+                    <div className="card-body">
+                        <h1 className="text-4xl font-bold text-center mb-6">
+                            Register
+                        </h1>
 
-                            <input
-                                type="text"
-                                name="name"
-                                required
-                                placeholder="Your Name"
-                                className="input input-bordered w-full"
-                            />
+                        <form
+                            onSubmit={handleRegister}
+                            className="space-y-4"
+                        >
+                            <div>
+                                <label className="label">
+                                    Name
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="name"
+                                    required
+                                    placeholder="Your Name"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="label">
+                                    Email
+                                </label>
+
+                                <input
+                                    type="email"
+                                    name="email"
+                                    required
+                                    placeholder="Your Email"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="label">
+                                    Photo URL
+                                </label>
+
+                                <input
+                                    type="url"
+                                    name="photo"
+                                    required
+                                    placeholder="https://example.com/photo.jpg"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="label">
+                                    Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="password"
+                                    required
+                                    placeholder="Password"
+                                    className="input input-bordered w-full"
+                                />
+                            </div>
+
+                            {error && (
+                                <p className="text-red-500 text-sm">
+                                    {error}
+                                </p>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="btn btn-primary w-full"
+                            >
+                                {loading ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Registering...
+                                    </>
+                                ) : (
+                                    "Register"
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="divider">
+                            OR
                         </div>
-
-                        <div>
-                            <label className="label">
-                                Email
-                            </label>
-
-                            <input
-                                type="email"
-                                name="email"
-                                required
-                                placeholder="Your Email"
-                                className="input input-bordered w-full"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="label">
-                                Photo URL
-                            </label>
-
-                            <input
-                                type="url"
-                                name="photo"
-                                required
-                                placeholder="https://example.com/photo.jpg"
-                                className="input input-bordered w-full"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="label">
-                                Password
-                            </label>
-
-                            <input
-                                type="password"
-                                name="password"
-                                required
-                                placeholder="Password"
-                                className="input input-bordered w-full"
-                            />
-                        </div>
-
-                        {error && (
-                            <p className="text-red-500 text-sm">
-                                {error}
-                            </p>
-                        )}
 
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={handleGoogleLogin}
                             disabled={loading}
-                            className="btn btn-primary w-full"
+                            className="btn btn-outline w-full"
                         >
-                            {loading ? (
-                                <>
-                                    <span className="loading loading-spinner loading-sm"></span>
-                                    Registering...
-                                </>
-                            ) : (
-                                "Register"
-                            )}
+                            Continue with Google
                         </button>
-                    </form>
 
-                    <div className="divider">
-                        OR
+                        <p className="text-center mt-4">
+                            Already have an account?{" "}
+                            <Link
+                                to="/login"
+                                className="text-primary font-semibold"
+                            >
+                                Login
+                            </Link>
+                        </p>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={handleGoogleLogin}
-                        disabled={loading}
-                        className="btn btn-outline w-full"
-                    >
-                        Continue with Google
-                    </button>
-
-                    <p className="text-center mt-4">
-                        Already have an account?{" "}
-                        <Link
-                            to="/login"
-                            className="text-primary font-semibold"
-                        >
-                            Login
-                        </Link>
-                    </p>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import DoctorCard from "../../components/DoctorCard";
+import PageTitle from "../../components/PageTitle";
 
 const AllAppointments = () => {
     const [doctors, setDoctors] = useState([]);
@@ -16,7 +17,13 @@ const AllAppointments = () => {
             : "https://docappoint-server-uvkv.onrender.com/doctors";
 
         fetch(url)
-            .then((res) => res.json())
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error("Failed to fetch doctors");
+                }
+
+                return res.json();
+            })
             .then((data) => {
                 setDoctors(data);
             })
@@ -49,61 +56,67 @@ const AllAppointments = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
-                All Appointments
-            </h1>
+        <>
+            <PageTitle title="All Appointments" />
 
-            <p className="text-center text-gray-500 mb-10">
-                Browse available doctors and book your appointment.
-            </p>
+            <div className="max-w-7xl mx-auto px-6 py-16">
+                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
+                    All Appointments
+                </h1>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
-                <input
-                    type="text"
-                    placeholder="Search Doctor Name..."
-                    className="input input-bordered w-full sm:max-w-md"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                />
+                <p className="text-center text-gray-500 mb-10">
+                    Browse available doctors and book your appointment.
+                </p>
 
-                <button
-                    onClick={handleSearch}
-                    className="btn btn-primary"
-                >
-                    Search
-                </button>
+                <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
+                    <input
+                        type="text"
+                        placeholder="Search Doctor Name..."
+                        className="input input-bordered w-full sm:max-w-md"
+                        value={search}
+                        onChange={(e) =>
+                            setSearch(e.target.value)
+                        }
+                        onKeyDown={handleKeyDown}
+                    />
 
-                {search && (
                     <button
-                        onClick={handleReset}
-                        className="btn btn-outline"
+                        onClick={handleSearch}
+                        className="btn btn-primary"
                     >
-                        Reset
+                        Search
                     </button>
+
+                    {search && (
+                        <button
+                            onClick={handleReset}
+                            className="btn btn-outline"
+                        >
+                            Reset
+                        </button>
+                    )}
+                </div>
+
+                {loading ? (
+                    <div className="flex justify-center items-center py-20">
+                        <span className="loading loading-spinner loading-lg"></span>
+                    </div>
+                ) : doctors.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {doctors.map((doctor) => (
+                            <DoctorCard
+                                key={doctor.id}
+                                doctor={doctor}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-center text-red-500 mt-10">
+                        No doctor found.
+                    </p>
                 )}
             </div>
-
-            {loading ? (
-                <div className="flex justify-center items-center py-20">
-                    <span className="loading loading-spinner loading-lg"></span>
-                </div>
-            ) : doctors.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {doctors.map((doctor) => (
-                        <DoctorCard
-                            key={doctor.id}
-                            doctor={doctor}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <p className="text-center text-red-500 mt-10">
-                    No doctor found.
-                </p>
-            )}
-        </div>
+        </>
     );
 };
 
