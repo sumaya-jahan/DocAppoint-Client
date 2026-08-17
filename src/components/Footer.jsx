@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 const Footer = () => {
     return (
@@ -9,9 +10,17 @@ const Footer = () => {
                     <div className="text-center md:text-left">
                         <Link
                             to="/"
-                            className="text-2xl font-bold"
+                            className="flex items-center justify-center md:justify-start gap-2"
                         >
-                            DocAppoint
+                            <img
+                                src={logo}
+                                alt="DocAppoint Logo"
+                                className="w-12 h-12 object-contain rounded-lg"
+                            />
+
+                            <span className="text-2xl font-bold">
+                                DocAppoint
+                            </span>
                         </Link>
 
                         <p className="text-gray-500 mt-2">

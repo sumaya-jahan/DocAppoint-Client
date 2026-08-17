@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { AuthContext } from "../providers/AuthProvider";
+import logo from "../assets/logo.png";
 
 const Navbar = () => {
     const { user, logOut } = useContext(AuthContext);
@@ -12,10 +13,7 @@ const Navbar = () => {
         try {
             await logOut();
 
-            toast.success(
-                "Logged out successfully!"
-            );
-
+            toast.success("Logged out successfully!");
             setMenuOpen(false);
         } catch (error) {
             toast.error(error.message);
@@ -28,15 +26,24 @@ const Navbar = () => {
             : "hover:text-primary transition";
 
     return (
-        <nav className="px-4 sm:px-6 py-4 shadow bg-base-100">
+        <nav className="px-4 sm:px-6 py-3 shadow bg-base-100">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center">
+
                     {/* Logo + Name */}
                     <Link
                         to="/"
-                        className="text-2xl font-bold"
+                        className="flex items-center gap-2"
                     >
-                        DocAppoint
+                        <img
+                            src={logo}
+                            alt="DocAppoint Logo"
+                            className="w-12 h-12 object-contain rounded-lg"
+                        />
+
+                        <span className="text-2xl font-bold">
+                            DocAppoint
+                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}
@@ -123,6 +130,7 @@ const Navbar = () => {
                 {menuOpen && (
                     <div className="md:hidden mt-4 border-t pt-4">
                         <div className="flex flex-col gap-4">
+
                             <NavLink
                                 to="/"
                                 onClick={() =>
@@ -186,9 +194,7 @@ const Navbar = () => {
                                         <Link
                                             to="/login"
                                             onClick={() =>
-                                                setMenuOpen(
-                                                    false
-                                                )
+                                                setMenuOpen(false)
                                             }
                                             className="btn btn-outline btn-sm flex-1"
                                         >
@@ -198,9 +204,7 @@ const Navbar = () => {
                                         <Link
                                             to="/register"
                                             onClick={() =>
-                                                setMenuOpen(
-                                                    false
-                                                )
+                                                setMenuOpen(false)
                                             }
                                             className="btn btn-primary btn-sm flex-1"
                                         >
