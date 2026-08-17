@@ -9,6 +9,7 @@ const Register = () => {
         createUser,
         updateUserProfile,
         googleLogin,
+        logOut,
     } = useContext(AuthContext);
 
     const navigate = useNavigate();
@@ -56,6 +57,14 @@ const Register = () => {
                 photo
             );
 
+            // Firebase automatically logs in new users.
+            // Logout so normal registration finishes on Login page.
+            await logOut();
+
+            localStorage.removeItem(
+                "access-token"
+            );
+
             toast.success(
                 "Registration successful!"
             );
@@ -94,9 +103,13 @@ const Register = () => {
                 }
             );
 
-            const jwtData = await jwtRes.json();
+            const jwtData =
+                await jwtRes.json();
 
-            if (!jwtRes.ok || !jwtData.token) {
+            if (
+                !jwtRes.ok ||
+                !jwtData.token
+            ) {
                 throw new Error(
                     jwtData.message ||
                     "Failed to generate token"
@@ -137,7 +150,9 @@ const Register = () => {
                         </h1>
 
                         <form
-                            onSubmit={handleRegister}
+                            onSubmit={
+                                handleRegister
+                            }
                             className="space-y-4"
                         >
                             <div>
@@ -204,7 +219,9 @@ const Register = () => {
 
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={
+                                    loading
+                                }
                                 className="btn btn-primary w-full"
                             >
                                 {loading ? (
@@ -224,7 +241,9 @@ const Register = () => {
 
                         <button
                             type="button"
-                            onClick={handleGoogleLogin}
+                            onClick={
+                                handleGoogleLogin
+                            }
                             disabled={loading}
                             className="btn btn-outline w-full"
                         >
