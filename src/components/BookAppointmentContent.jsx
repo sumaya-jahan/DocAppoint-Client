@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-    useParams,
-    useRouter,
-} from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { useSession } from "../lib/auth-client";
+import { API_URL } from "../lib/api";
 
 const BookAppointmentContent = () => {
     const params = useParams();
@@ -22,16 +20,11 @@ const BookAppointmentContent = () => {
 
     const user = session?.user;
 
-    const [doctor, setDoctor] =
-        useState(null);
+    const [doctor, setDoctor] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const [loading, setLoading] =
-        useState(true);
-
-    const [
-        bookingLoading,
-        setBookingLoading,
-    ] = useState(false);
+    const [bookingLoading, setBookingLoading] =
+        useState(false);
 
     useEffect(() => {
         if (sessionLoading) {
@@ -40,8 +33,7 @@ const BookAppointmentContent = () => {
 
         // Private route
         if (!user) {
-            const bookingPath =
-                `/book/${id}`;
+            const bookingPath = `/book/${id}`;
 
             router.replace(
                 `/login?callbackUrl=${encodeURIComponent(
@@ -56,10 +48,9 @@ const BookAppointmentContent = () => {
             try {
                 setLoading(true);
 
-                const response =
-                    await fetch(
-                        `http://localhost:5000/doctors/${id}`
-                    );
+                const response = await fetch(
+                    `${API_URL}/doctors/${id}`
+                );
 
                 if (!response.ok) {
                     throw new Error(
@@ -73,12 +64,7 @@ const BookAppointmentContent = () => {
                 setDoctor(data);
             } catch (error) {
                 console.error(error);
-
                 setDoctor(null);
-
-                toast.error(
-                    "Failed to load doctor information."
-                );
             } finally {
                 setLoading(false);
             }
@@ -92,39 +78,22 @@ const BookAppointmentContent = () => {
         router,
     ]);
 
-    const handleBooking = async (
-        event
-    ) => {
+    const handleBooking = async (event) => {
         event.preventDefault();
 
-        if (!user?.email) {
-            toast.error(
-                "Please login first."
-            );
-
-            router.push("/login");
+        if (!user || !doctor) {
             return;
         }
 
-        if (!doctor) {
-            toast.error(
-                "Doctor information is unavailable."
-            );
-            return;
-        }
-
-        const form =
-            event.currentTarget;
+        const form = event.currentTarget;
 
         const booking = {
             userEmail: user.email,
             doctorName: doctor.name,
             patientName:
                 form.patientName.value.trim(),
-            gender:
-                form.gender.value,
-            phone:
-                form.phone.value.trim(),
+            gender: form.gender.value,
+            phone: form.phone.value.trim(),
             appointmentDate:
                 form.date.value,
             appointmentTime:
@@ -134,49 +103,42 @@ const BookAppointmentContent = () => {
         try {
             setBookingLoading(true);
 
-            const response =
-                await fetch(
-                    "http://localhost:5000/appointments",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-
-                        credentials:
-                            "include",
-
-                        body: JSON.stringify(
-                            booking
-                        ),
-                    }
-                );
+            const response = await fetch(
+                `${API_URL}/appointments`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    credentials: "include",
+                    body: JSON.stringify(
+                        booking
+                    ),
+                }
+            );
 
             const data =
                 await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message ||
-                    "Failed to book appointment"
+                    data?.message ||
+                    "Booking failed!"
                 );
             }
 
-            if (data.insertedId) {
-                toast.success(
-                    "Appointment booked successfully!"
-                );
+            toast.success(
+                "Appointment booked successfully!"
+            );
 
-                form.reset();
+            form.reset();
 
-                router.push(
-                    "/dashboard"
-                );
+            router.push(
+                "/dashboard"
+            );
 
-                router.refresh();
-            }
+            router.refresh();
         } catch (error) {
             console.error(error);
 
@@ -323,8 +285,7 @@ const BookAppointmentContent = () => {
                                     value=""
                                     disabled
                                 >
-                                    Select
-                                    Gender
+                                    Select Gender
                                 </option>
 
                                 <option value="Male">
@@ -359,8 +320,7 @@ const BookAppointmentContent = () => {
                         {/* Date */}
                         <div>
                             <label className="label">
-                                Appointment
-                                Date
+                                Appointment Date
                             </label>
 
                             <input
@@ -381,8 +341,7 @@ const BookAppointmentContent = () => {
                         {/* Time */}
                         <div>
                             <label className="label">
-                                Appointment
-                                Time
+                                Appointment Time
                             </label>
 
                             <input

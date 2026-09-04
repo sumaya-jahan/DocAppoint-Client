@@ -2,137 +2,137 @@
 
 import { useEffect, useState } from "react";
 import DoctorCard from "./DoctorCard";
+import { API_URL } from "../lib/api";
 
 const AllAppointmentsContent = () => {
     const [doctors, setDoctors] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-    const fetchDoctors = async (searchText = "") => {
+    const loadDoctors = async (searchText = "") => {
         try {
             setLoading(true);
+            setError("");
 
-            const url = searchText
-                ? `http://localhost:5000/doctors?search=${encodeURIComponent(
-                    searchText
+            const url = searchText.trim()
+                ? `${API_URL}/doctors?search=${encodeURIComponent(
+                    searchText.trim()
                 )}`
-                : "http://localhost:5000/doctors";
+                : `${API_URL}/doctors`;
 
             const response = await fetch(url);
 
             if (!response.ok) {
-                throw new Error(
-                    "Failed to fetch doctors"
-                );
+                throw new Error("Failed to load doctors.");
             }
 
             const data = await response.json();
-
             setDoctors(data);
-        } catch (error) {
-            console.error(error);
-            setDoctors([]);
+        } catch (err) {
+            console.error(err);
+            setError("Could not load doctors. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchDoctors();
+        loadDoctors();
     }, []);
 
-    const handleSearch = () => {
-        fetchDoctors(search.trim());
+    const handleSearch = (event) => {
+        event.preventDefault();
+        loadDoctors(search);
     };
 
     const handleReset = () => {
         setSearch("");
-        fetchDoctors();
-    };
-
-    const handleKeyDown = (event) => {
-        if (event.key === "Enter") {
-            handleSearch();
-        }
+        loadDoctors("");
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
-                All Appointments
-            </h1>
+        <section className="min-h-screen bg-base-200 py-12 px-4">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-bold">
+                        All Appointments
+                    </h1>
 
-            <p className="text-center text-gray-500 mb-10">
-                Browse available doctors and
-                book your appointment.
-            </p>
+                    <p className="mt-3 text-base-content/70">
+                        Browse our doctors and find the right specialist for
+                        your healthcare needs.
+                    </p>
+                </div>
 
-            {/* Search */}
-            <div className="flex flex-col sm:flex-row justify-center gap-3 mb-10">
-                <input
-                    type="text"
-                    placeholder="Search Doctor Name..."
-                    className="input input-bordered w-full sm:max-w-md"
-                    value={search}
-                    onChange={(event) =>
-                        setSearch(
-                            event.target.value
-                        )
-                    }
-                    onKeyDown={
-                        handleKeyDown
-                    }
-                />
-
-                <button
-                    type="button"
-                    onClick={
-                        handleSearch
-                    }
-                    className="btn btn-primary"
+                <form
+                    onSubmit={handleSearch}
+                    className="max-w-2xl mx-auto mb-10"
                 >
-                    Search
-                </button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) =>
+                                setSearch(event.target.value)
+                            }
+                            placeholder="Search by doctor name"
+                            className="input input-bordered w-full"
+                        />
 
-                {search && (
-                    <button
-                        type="button"
-                        onClick={
-                            handleReset
-                        }
-                        className="btn btn-outline"
-                    >
-                        Reset
-                    </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                        >
+                            Search
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleReset}
+                            className="btn btn-outline"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                {loading && (
+                    <div className="flex justify-center py-16">
+                        <span className="loading loading-spinner loading-lg"></span>
+                    </div>
+                )}
+
+                {!loading && error && (
+                    <div className="alert alert-error max-w-2xl mx-auto">
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                {!loading && !error && doctors.length === 0 && (
+                    <div className="text-center py-16">
+                        <h2 className="text-2xl font-semibold">
+                            No doctors found
+                        </h2>
+
+                        <p className="mt-2 text-base-content/70">
+                            Try searching with another doctor name.
+                        </p>
+                    </div>
+                )}
+
+                {!loading && !error && doctors.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {doctors.map((doctor) => (
+                            <DoctorCard
+                                key={doctor._id || doctor.id}
+                                doctor={doctor}
+                            />
+                        ))}
+                    </div>
                 )}
             </div>
-
-            {/* Doctor List */}
-            {loading ? (
-                <div className="flex justify-center items-center py-20">
-                    <span className="loading loading-spinner loading-lg"></span>
-                </div>
-            ) : doctors.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {doctors.map(
-                        (doctor) => (
-                            <DoctorCard
-                                key={
-                                    doctor.id
-                                }
-                                doctor={
-                                    doctor
-                                }
-                            />
-                        )
-                    )}
-                </div>
-            ) : (
-                <p className="text-center text-red-500 mt-10">
-                    No doctor found.
-                </p>
-            )}
-        </div>
+        </section>
     );
 };
 

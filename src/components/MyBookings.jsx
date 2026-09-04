@@ -4,20 +4,16 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSession } from "../lib/auth-client";
+import { API_URL } from "../lib/api";
 
 const MyBookings = () => {
-    const {
-        data: session,
-        isPending: sessionLoading,
-    } = useSession();
+    const { data: session, isPending: sessionLoading } =
+        useSession();
 
     const user = session?.user;
 
-    const [bookings, setBookings] =
-        useState([]);
-
-    const [loading, setLoading] =
-        useState(true);
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [updateLoading, setUpdateLoading] =
         useState(false);
@@ -31,18 +27,14 @@ const MyBookings = () => {
     const [bookingToDelete, setBookingToDelete] =
         useState(null);
 
-    const [formData, setFormData] =
-        useState({
-            patientName: "",
-            gender: "",
-            phone: "",
-            appointmentDate: "",
-            appointmentTime: "",
-        });
+    const [formData, setFormData] = useState({
+        patientName: "",
+        gender: "",
+        phone: "",
+        appointmentDate: "",
+        appointmentTime: "",
+    });
 
-    // ======================================
-    // LOAD CURRENT USER BOOKINGS
-    // ======================================
     useEffect(() => {
         if (sessionLoading) {
             return;
@@ -59,22 +51,20 @@ const MyBookings = () => {
                 setLoading(true);
 
                 const response = await fetch(
-                    `http://localhost:5000/appointments?email=${encodeURIComponent(
+                    `${API_URL}/appointments?email=${encodeURIComponent(
                         user.email
                     )}`,
                     {
-                        method: "GET",
                         credentials: "include",
                     }
                 );
 
-                const data =
-                    await response.json();
+                const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(
-                        data.message ||
-                        "Failed to load appointments"
+                        data?.message ||
+                        "Failed to load bookings."
                     );
                 }
 
@@ -84,8 +74,10 @@ const MyBookings = () => {
 
                 toast.error(
                     error?.message ||
-                    "Failed to load appointments."
+                    "Failed to load bookings."
                 );
+
+                setBookings([]);
             } finally {
                 setLoading(false);
             }
@@ -97,9 +89,6 @@ const MyBookings = () => {
         sessionLoading,
     ]);
 
-    // ======================================
-    // OPEN UPDATE MODAL
-    // ======================================
     const handleOpenUpdate = (booking) => {
         setSelectedBooking(booking);
 
@@ -117,39 +106,38 @@ const MyBookings = () => {
         });
     };
 
-    // ======================================
-    // CLOSE UPDATE MODAL
-    // ======================================
     const handleCloseUpdate = () => {
+        if (updateLoading) {
+            return;
+        }
+
         setSelectedBooking(null);
+
+        setFormData({
+            patientName: "",
+            gender: "",
+            phone: "",
+            appointmentDate: "",
+            appointmentTime: "",
+        });
     };
 
-    // ======================================
-    // INPUT CHANGE
-    // ======================================
     const handleChange = (event) => {
         const {
             name,
             value,
         } = event.target;
 
-        setFormData(
-            (previousData) => ({
-                ...previousData,
-                [name]: value,
-            })
-        );
+        setFormData((previous) => ({
+            ...previous,
+            [name]: value,
+        }));
     };
 
-    // ======================================
-    // UPDATE BOOKING
-    // ======================================
-    const handleUpdate = async (
-        event
-    ) => {
+    const handleUpdate = async (event) => {
         event.preventDefault();
 
-        if (!selectedBooking?._id) {
+        if (!selectedBooking) {
             return;
         }
 
@@ -157,46 +145,40 @@ const MyBookings = () => {
             setUpdateLoading(true);
 
             const response = await fetch(
-                `http://localhost:5000/appointments/${selectedBooking._id}`,
+                `${API_URL}/appointments/${selectedBooking._id}`,
                 {
                     method: "PUT",
-
                     headers: {
                         "Content-Type":
                             "application/json",
                     },
-
-                    credentials:
-                        "include",
-
+                    credentials: "include",
                     body: JSON.stringify(
                         formData
                     ),
                 }
             );
 
-            const data =
-                await response.json();
+            const data = await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message ||
-                    "Failed to update appointment"
+                    data?.message ||
+                    "Failed to update appointment."
                 );
             }
 
-            setBookings(
-                (currentBookings) =>
-                    currentBookings.map(
-                        (booking) =>
-                            booking._id ===
-                                selectedBooking._id
-                                ? {
-                                    ...booking,
-                                    ...formData,
-                                }
-                                : booking
-                    )
+            setBookings((previousBookings) =>
+                previousBookings.map(
+                    (booking) =>
+                        booking._id ===
+                            selectedBooking._id
+                            ? {
+                                ...booking,
+                                ...formData,
+                            }
+                            : booking
+                )
             );
 
             setSelectedBooking(null);
@@ -216,11 +198,8 @@ const MyBookings = () => {
         }
     };
 
-    // ======================================
-    // DELETE BOOKING
-    // ======================================
     const handleDelete = async () => {
-        if (!bookingToDelete?._id) {
+        if (!bookingToDelete) {
             return;
         }
 
@@ -228,40 +207,35 @@ const MyBookings = () => {
             setDeleteLoading(true);
 
             const response = await fetch(
-                `http://localhost:5000/appointments/${bookingToDelete._id}`,
+                `${API_URL}/appointments/${bookingToDelete._id}`,
                 {
                     method: "DELETE",
-                    credentials:
-                        "include",
+                    credentials: "include",
                 }
             );
 
-            const data =
-                await response.json();
+            const data = await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message ||
-                    "Failed to delete appointment"
+                    data?.message ||
+                    "Failed to delete appointment."
                 );
             }
 
-            if (data.deletedCount > 0) {
-                setBookings(
-                    (currentBookings) =>
-                        currentBookings.filter(
-                            (booking) =>
-                                booking._id !==
-                                bookingToDelete._id
-                        )
-                );
-
-                toast.success(
-                    "Appointment deleted successfully!"
-                );
-            }
+            setBookings((previousBookings) =>
+                previousBookings.filter(
+                    (booking) =>
+                        booking._id !==
+                        bookingToDelete._id
+                )
+            );
 
             setBookingToDelete(null);
+
+            toast.success(
+                "Appointment deleted successfully!"
+            );
         } catch (error) {
             console.error(error);
 
@@ -279,45 +253,56 @@ const MyBookings = () => {
         loading
     ) {
         return (
-            <div className="flex justify-center items-center py-20">
+            <div className="flex justify-center items-center py-16">
                 <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }
 
+    if (!user) {
+        return (
+            <div className="text-center py-10">
+                <p>
+                    Please login to view your
+                    bookings.
+                </p>
+            </div>
+        );
+    }
+
     return (
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div>
             <div className="mb-8">
-                <h2 className="text-3xl md:text-4xl font-bold">
+                <h2 className="text-3xl font-bold">
                     My Bookings
                 </h2>
 
-                <p className="text-gray-500 mt-2">
-                    Manage your doctor
+                <p className="text-base-content/70 mt-2">
+                    View and manage your doctor
                     appointments.
                 </p>
             </div>
 
             {bookings.length === 0 ? (
-                <div className="text-center py-16 bg-base-100 rounded-2xl shadow">
-                    <h3 className="text-xl font-semibold">
+                <div className="text-center py-16 bg-base-100 rounded-xl shadow-sm">
+                    <h3 className="text-2xl font-semibold">
                         No bookings found
                     </h3>
 
-                    <p className="text-gray-500 mt-2">
+                    <p className="text-base-content/60 mt-2">
                         You have not booked any
                         appointments yet.
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {bookings.map(
                         (booking) => (
                             <div
                                 key={
                                     booking._id
                                 }
-                                className="card bg-base-100 shadow-xl h-full"
+                                className="card bg-base-100 shadow-md"
                             >
                                 <div className="card-body">
                                     <h3 className="card-title text-2xl">
@@ -413,6 +398,7 @@ const MyBookings = () => {
                     )}
                 </div>
             )}
+
             {/* UPDATE MODAL */}
             {selectedBooking && (
                 <dialog
@@ -498,8 +484,7 @@ const MyBookings = () => {
                                     required
                                 >
                                     <option value="">
-                                        Select
-                                        Gender
+                                        Select Gender
                                     </option>
 
                                     <option value="Male">
@@ -537,8 +522,7 @@ const MyBookings = () => {
 
                             <div>
                                 <label className="label">
-                                    Appointment
-                                    Date
+                                    Appointment Date
                                 </label>
 
                                 <input
@@ -562,8 +546,7 @@ const MyBookings = () => {
 
                             <div>
                                 <label className="label">
-                                    Appointment
-                                    Time
+                                    Appointment Time
                                 </label>
 
                                 <input

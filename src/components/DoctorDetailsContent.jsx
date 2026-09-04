@@ -8,6 +8,7 @@ import {
 } from "next/navigation";
 
 import { useSession } from "../lib/auth-client";
+import { API_URL } from "../lib/api";
 
 const DoctorDetailsContent = () => {
     const params = useParams();
@@ -22,11 +23,8 @@ const DoctorDetailsContent = () => {
 
     const user = session?.user;
 
-    const [doctor, setDoctor] =
-        useState(null);
-
-    const [loading, setLoading] =
-        useState(true);
+    const [doctor, setDoctor] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (sessionLoading) {
@@ -35,8 +33,7 @@ const DoctorDetailsContent = () => {
 
         // Private route
         if (!user) {
-            const doctorPath =
-                `/doctor/${id}`;
+            const doctorPath = `/doctor/${id}`;
 
             router.replace(
                 `/login?callbackUrl=${encodeURIComponent(
@@ -51,10 +48,9 @@ const DoctorDetailsContent = () => {
             try {
                 setLoading(true);
 
-                const response =
-                    await fetch(
-                        `http://localhost:5000/doctors/${id}`
-                    );
+                const response = await fetch(
+                    `${API_URL}/doctors/${id}`
+                );
 
                 if (!response.ok) {
                     throw new Error(
@@ -62,13 +58,11 @@ const DoctorDetailsContent = () => {
                     );
                 }
 
-                const data =
-                    await response.json();
+                const data = await response.json();
 
                 setDoctor(data);
             } catch (error) {
                 console.error(error);
-
                 setDoctor(null);
             } finally {
                 setLoading(false);
@@ -132,12 +126,8 @@ const DoctorDetailsContent = () => {
                         {/* Doctor Image */}
                         <div className="flex justify-center">
                             <img
-                                src={
-                                    doctor.image
-                                }
-                                alt={
-                                    doctor.name
-                                }
+                                src={doctor.image}
+                                alt={doctor.name}
                                 className="w-56 h-56 rounded-2xl object-cover shadow-md"
                             />
                         </div>
@@ -145,15 +135,11 @@ const DoctorDetailsContent = () => {
                         {/* Doctor Information */}
                         <div className="md:col-span-2">
                             <h1 className="text-3xl md:text-4xl font-bold">
-                                {
-                                    doctor.name
-                                }
+                                {doctor.name}
                             </h1>
 
                             <p className="text-xl text-primary font-semibold mt-2">
-                                {
-                                    doctor.specialty
-                                }
+                                {doctor.specialty}
                             </p>
 
                             <div className="mt-6 space-y-3">
@@ -161,20 +147,14 @@ const DoctorDetailsContent = () => {
                                     <strong>
                                         Experience:
                                     </strong>{" "}
-                                    {
-                                        doctor.experience
-                                    }
+                                    {doctor.experience}
                                 </p>
 
                                 <p>
                                     <strong>
-                                        Consultation
-                                        Fee:
+                                        Consultation Fee:
                                     </strong>{" "}
-                                    ৳
-                                    {
-                                        doctor.fee
-                                    }
+                                    ৳{doctor.fee}
                                 </p>
 
                                 {doctor.rating && (
@@ -182,10 +162,7 @@ const DoctorDetailsContent = () => {
                                         <strong>
                                             Rating:
                                         </strong>{" "}
-                                        ⭐{" "}
-                                        {
-                                            doctor.rating
-                                        }
+                                        ⭐ {doctor.rating}
                                     </p>
                                 )}
 
@@ -194,9 +171,7 @@ const DoctorDetailsContent = () => {
                                         <strong>
                                             Hospital:
                                         </strong>{" "}
-                                        {
-                                            doctor.hospital
-                                        }
+                                        {doctor.hospital}
                                     </p>
                                 )}
 
@@ -205,37 +180,29 @@ const DoctorDetailsContent = () => {
                                         <strong>
                                             Location:
                                         </strong>{" "}
-                                        {
-                                            doctor.location
-                                        }
+                                        {doctor.location}
                                     </p>
                                 )}
                             </div>
 
-                            {/* Availability */}
-                            {doctor.availability
-                                ?.length >
-                                0 && (
+                            {doctor.availability &&
+                                doctor.availability.length > 0 && (
                                     <div className="mt-6">
-                                        <h3 className="text-xl font-bold mb-3">
+                                        <h3 className="font-semibold mb-3">
                                             Availability
                                         </h3>
 
                                         <div className="flex flex-wrap gap-2">
                                             {doctor.availability.map(
                                                 (
-                                                    time,
+                                                    day,
                                                     index
                                                 ) => (
                                                     <span
-                                                        key={
-                                                            index
-                                                        }
-                                                        className="badge badge-outline badge-lg"
+                                                        key={index}
+                                                        className="badge badge-primary badge-outline"
                                                     >
-                                                        {
-                                                            time
-                                                        }
+                                                        {day}
                                                     </span>
                                                 )
                                             )}
@@ -243,15 +210,13 @@ const DoctorDetailsContent = () => {
                                     </div>
                                 )}
 
-                            {/* Description */}
                             {doctor.description && (
                                 <div className="mt-6">
-                                    <h3 className="text-xl font-bold mb-2">
-                                        About
-                                        Doctor
+                                    <h3 className="font-semibold mb-2">
+                                        About Doctor
                                     </h3>
 
-                                    <p className="text-gray-600 leading-relaxed">
+                                    <p className="text-base-content/70 leading-relaxed">
                                         {
                                             doctor.description
                                         }
@@ -259,13 +224,14 @@ const DoctorDetailsContent = () => {
                                 </div>
                             )}
 
-                            <Link
-                                href={`/book/${doctor.id}`}
-                                className="btn btn-primary w-full mt-8"
-                            >
-                                Book
-                                Appointment
-                            </Link>
+                            <div className="mt-8">
+                                <Link
+                                    href={`/book/${doctor.id}`}
+                                    className="btn btn-primary"
+                                >
+                                    Book Appointment
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
