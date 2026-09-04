@@ -1,36 +1,59 @@
-# DocAppoint — Doctor Appointment Manager
+# DocAppoint
 
-DocAppoint is a modern doctor appointment booking web application where users can explore doctors, view detailed information, securely book appointments, and manage their bookings and profile from a personal dashboard.
+DocAppoint is a doctor appointment management web application built with Next.js, Better Auth, Express.js, and MongoDB.
 
 ## Live Website
 
-`https://doc-appoint-client-three.vercel.app/`
+https://doc-appoint-client-three.vercel.app/
+
+## Client Repository
+
+https://github.com/sumaya-jahan/DocAppoint-Client
+
+## Server Repository
+
+https://github.com/sumaya-jahan/DocAppoint-Server
 
 ## Key Features
 
-* Browse available doctors and view detailed doctor information.
-* Secure user authentication with email/password and social login.
-* JWT-protected private routes for authenticated users.
-* Book doctor appointments with patient information, date, and time.
-* View, update, and delete personal bookings from the dashboard.
-* Search doctors by name from the appointments page.
-* Manage user profile information including name and profile photo.
-* Responsive design for mobile, tablet, and desktop devices.
-* Loading indicators, toast notifications, and a custom 404 page.
+- Secure authentication using Better Auth
+- Email and password registration and login
+- Google social login
+- Browse all doctors dynamically
+- Search doctors by doctor name
+- View detailed doctor information
+- Book doctor appointments securely
+- Private user dashboard
+- Update and delete appointments
+- Update user profile name and photo
+- Protected routes with login redirect
+- Responsive design for mobile, tablet, and desktop
+- Loading states and custom 404 page
+- JWT plugin integration with Better Auth
+- Environment-based API configuration
 
 ## Technologies Used
 
-* React
-* React Router
-* Tailwind CSS
-* Firebase Authentication
-* Node.js
-* Express.js
-* MongoDB
-* JSON Web Token (JWT)
-* Vercel
-* Render
+### Frontend
 
-## Server
+- Next.js
+- React
+- Tailwind CSS
+- DaisyUI
+- Better Auth
+- React Hot Toast
 
-The backend API is built with Node.js, Express.js, MongoDB, and JWT authentication.
+### Backend
+
+- Node.js
+- Express.js
+- MongoDB
+- Better Auth
+- Better Auth MongoDB Adapter
+
+## Environment Variable
+
+Create a `.env.local` file in the client project:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
