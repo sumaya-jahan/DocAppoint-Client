@@ -1,25 +1,32 @@
-import { useContext } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { AuthContext } from "../providers/AuthProvider";
+"use client";
+
+import { useRouter } from "next/navigation";
+
+import { useSession } from "../lib/auth-client";
 
 const DoctorCard = ({ doctor }) => {
-    const { user } = useContext(AuthContext);
-    const navigate = useNavigate();
-    const location = useLocation();
+    const router = useRouter();
+
+    const {
+        data: session,
+        isPending,
+    } = useSession();
+
+    const user = session?.user;
 
     const handleViewDetails = () => {
+        const doctorPath = `/doctor/${doctor.id}`;
+
         if (user) {
-            navigate(`/doctor/${doctor.id}`);
-        } else {
-            navigate("/login", {
-                state: {
-                    from: {
-                        pathname: `/doctor/${doctor.id}`,
-                    },
-                    previous: location.pathname,
-                },
-            });
+            router.push(doctorPath);
+            return;
         }
+
+        router.push(
+            `/login?callbackUrl=${encodeURIComponent(
+                doctorPath
+            )}`
+        );
     };
 
     return (
@@ -38,15 +45,30 @@ const DoctorCard = ({ doctor }) => {
                 </h2>
 
                 <p>{doctor.specialty}</p>
-                <p>Experience: {doctor.experience}</p>
-                <p>Fee: ৳{doctor.fee}</p>
+
+                <p>
+                    Experience:{" "}
+                    {doctor.experience}
+                </p>
+
+                <p>
+                    Fee: ৳{doctor.fee}
+                </p>
 
                 <div className="mt-auto">
                     <button
-                        onClick={handleViewDetails}
+                        type="button"
+                        onClick={
+                            handleViewDetails
+                        }
+                        disabled={isPending}
                         className="btn btn-primary mt-3"
                     >
-                        View Details
+                        {isPending ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "View Details"
+                        )}
                     </button>
                 </div>
             </div>
