@@ -1,44 +1,82 @@
-import { useContext, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import toast from "react-hot-toast";
 
-import { AuthContext } from "../providers/AuthProvider";
+import {
+    signOut,
+    useSession,
+} from "../lib/auth-client";
+
 import logo from "../assets/logo.png";
 
 const Navbar = () => {
-    const { user, logOut } = useContext(AuthContext);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const pathname = usePathname();
+    const [menuOpen, setMenuOpen] =
+        useState(false);
+
+    const {
+        data: session,
+        isPending,
+    } = useSession();
+
+    const user = session?.user;
 
     const handleLogout = async () => {
         try {
-            await logOut();
+            const result = await signOut();
 
-            toast.success("Logged out successfully!");
+            if (result?.error) {
+                toast.error(
+                    result.error.message ||
+                    "Logout failed"
+                );
+                return;
+            }
+
+            toast.success(
+                "Logged out successfully!"
+            );
+
             setMenuOpen(false);
         } catch (error) {
-            toast.error(error.message);
+            toast.error(
+                error?.message ||
+                "Logout failed"
+            );
         }
     };
 
-    const navLinkClass = ({ isActive }) =>
-        isActive
+    const navLinkClass = (path) => {
+        const isActive =
+            path === "/"
+                ? pathname === "/"
+                : pathname.startsWith(path);
+
+        return isActive
             ? "font-semibold text-primary"
             : "hover:text-primary transition";
+    };
 
     return (
         <nav className="px-4 sm:px-6 py-3 shadow bg-base-100">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center">
-
                     {/* Logo + Name */}
                     <Link
-                        to="/"
+                        href="/"
                         className="flex items-center gap-2"
                     >
-                        <img
+                        <Image
                             src={logo}
                             alt="DocAppoint Logo"
+                            width={48}
+                            height={48}
                             className="w-12 h-12 object-contain rounded-lg"
+                            priority
                         />
 
                         <span className="text-2xl font-bold">
@@ -48,47 +86,58 @@ const Navbar = () => {
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-6">
-                        <NavLink
-                            to="/"
-                            className={navLinkClass}
+                        <Link
+                            href="/"
+                            className={navLinkClass(
+                                "/"
+                            )}
                         >
                             Home
-                        </NavLink>
+                        </Link>
 
-                        <NavLink
-                            to="/appointments"
-                            className={navLinkClass}
+                        <Link
+                            href="/appointments"
+                            className={navLinkClass(
+                                "/appointments"
+                            )}
                         >
                             All Appointments
-                        </NavLink>
+                        </Link>
 
-                        <NavLink
-                            to="/dashboard"
-                            className={navLinkClass}
+                        <Link
+                            href="/dashboard"
+                            className={navLinkClass(
+                                "/dashboard"
+                            )}
                         >
                             Dashboard
-                        </NavLink>
+                        </Link>
                     </div>
 
                     {/* Desktop Auth */}
                     <div className="hidden md:flex items-center gap-3">
-                        {user ? (
+                        {isPending ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : user ? (
                             <>
                                 <img
                                     src={
-                                        user.photoURL ||
+                                        user.image ||
                                         "https://i.pravatar.cc/100"
                                     }
                                     alt="Profile"
                                     title={
-                                        user.displayName ||
+                                        user.name ||
                                         user.email
                                     }
                                     className="w-10 h-10 rounded-full object-cover border"
                                 />
 
                                 <button
-                                    onClick={handleLogout}
+                                    type="button"
+                                    onClick={
+                                        handleLogout
+                                    }
                                     className="btn btn-error btn-sm"
                                 >
                                     Logout
@@ -97,14 +146,14 @@ const Navbar = () => {
                         ) : (
                             <>
                                 <Link
-                                    to="/login"
+                                    href="/login"
                                     className="btn btn-outline btn-sm"
                                 >
                                     Login
                                 </Link>
 
                                 <Link
-                                    to="/register"
+                                    href="/register"
                                     className="btn btn-primary btn-sm"
                                 >
                                     Register
@@ -117,9 +166,11 @@ const Navbar = () => {
                     <button
                         type="button"
                         onClick={() =>
-                            setMenuOpen(!menuOpen)
+                            setMenuOpen(
+                                !menuOpen
+                            )
                         }
-                        className="btn btn-ghost md:hidden text-xl"
+                        className="btn btn-ghost md:hidden text-2xl"
                         aria-label="Toggle navigation menu"
                     >
                         ☰
@@ -130,44 +181,57 @@ const Navbar = () => {
                 {menuOpen && (
                     <div className="md:hidden mt-4 border-t pt-4">
                         <div className="flex flex-col gap-4">
-
-                            <NavLink
-                                to="/"
+                            <Link
+                                href="/"
                                 onClick={() =>
-                                    setMenuOpen(false)
+                                    setMenuOpen(
+                                        false
+                                    )
                                 }
-                                className={navLinkClass}
+                                className={navLinkClass(
+                                    "/"
+                                )}
                             >
                                 Home
-                            </NavLink>
+                            </Link>
 
-                            <NavLink
-                                to="/appointments"
+                            <Link
+                                href="/appointments"
                                 onClick={() =>
-                                    setMenuOpen(false)
+                                    setMenuOpen(
+                                        false
+                                    )
                                 }
-                                className={navLinkClass}
+                                className={navLinkClass(
+                                    "/appointments"
+                                )}
                             >
                                 All Appointments
-                            </NavLink>
+                            </Link>
 
-                            <NavLink
-                                to="/dashboard"
+                            <Link
+                                href="/dashboard"
                                 onClick={() =>
-                                    setMenuOpen(false)
+                                    setMenuOpen(
+                                        false
+                                    )
                                 }
-                                className={navLinkClass}
+                                className={navLinkClass(
+                                    "/dashboard"
+                                )}
                             >
                                 Dashboard
-                            </NavLink>
+                            </Link>
 
                             <div className="border-t pt-4">
-                                {user ? (
+                                {isPending ? (
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                ) : user ? (
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-3">
                                             <img
                                                 src={
-                                                    user.photoURL ||
+                                                    user.image ||
                                                     "https://i.pravatar.cc/100"
                                                 }
                                                 alt="Profile"
@@ -175,12 +239,13 @@ const Navbar = () => {
                                             />
 
                                             <span className="text-sm truncate max-w-36">
-                                                {user.displayName ||
+                                                {user.name ||
                                                     user.email}
                                             </span>
                                         </div>
 
                                         <button
+                                            type="button"
                                             onClick={
                                                 handleLogout
                                             }
@@ -192,9 +257,11 @@ const Navbar = () => {
                                 ) : (
                                     <div className="flex gap-3">
                                         <Link
-                                            to="/login"
+                                            href="/login"
                                             onClick={() =>
-                                                setMenuOpen(false)
+                                                setMenuOpen(
+                                                    false
+                                                )
                                             }
                                             className="btn btn-outline btn-sm flex-1"
                                         >
@@ -202,9 +269,11 @@ const Navbar = () => {
                                         </Link>
 
                                         <Link
-                                            to="/register"
+                                            href="/register"
                                             onClick={() =>
-                                                setMenuOpen(false)
+                                                setMenuOpen(
+                                                    false
+                                                )
                                             }
                                             className="btn btn-primary btn-sm flex-1"
                                         >

@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
+import Image from "next/image";
+
 import logo from "../assets/logo.png";
 
 const Footer = () => {
@@ -9,12 +11,14 @@ const Footer = () => {
                     {/* Logo + Name */}
                     <div className="text-center md:text-left">
                         <Link
-                            to="/"
+                            href="/"
                             className="flex items-center justify-center md:justify-start gap-2"
                         >
-                            <img
+                            <Image
                                 src={logo}
                                 alt="DocAppoint Logo"
+                                width={48}
+                                height={48}
                                 className="w-12 h-12 object-contain rounded-lg"
                             />
 
