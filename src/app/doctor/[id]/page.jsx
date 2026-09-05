@@ -3,9 +3,11 @@ import DoctorDetailsContent from "../../../components/DoctorDetailsContent";
 export const metadata = {
     title: "Doctor Details",
     description:
-        "View doctor information, availability, consultation fee, and book an appointment on DocAppoint.",
+        "View doctor details, experience, availability, fees, and appointment information.",
 };
 
-export default function DoctorDetailsPage() {
-    return <DoctorDetailsContent />;
+export default async function DoctorDetailsPage({ params }) {
+    const { id } = await params;
+
+    return <DoctorDetailsContent doctorId={id} />;
 }
