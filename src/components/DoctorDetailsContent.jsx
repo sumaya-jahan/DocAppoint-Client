@@ -1,243 +1,246 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import {
-    useParams,
-    useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useSession } from "../lib/auth-client";
 import { API_URL } from "../lib/api";
 
-const DoctorDetailsContent = () => {
-    const params = useParams();
+export default function DoctorDetailsContent({ doctorId }) {
     const router = useRouter();
-
-    const id = params.id;
 
     const {
         data: session,
         isPending: sessionLoading,
     } = useSession();
 
-    const user = session?.user;
-
     const [doctor, setDoctor] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
     useEffect(() => {
         if (sessionLoading) {
             return;
         }
 
-        // Private route
-        if (!user) {
-            const doctorPath = `/doctor/${id}`;
-
+        if (!session?.user) {
             router.replace(
                 `/login?callbackUrl=${encodeURIComponent(
-                    doctorPath
+                    `/doctor/${doctorId}`
                 )}`
             );
-
             return;
         }
 
-        const fetchDoctor = async () => {
+        if (!doctorId) {
+            setError("Doctor not found.");
+            setLoading(false);
+            return;
+        }
+
+        const loadDoctor = async () => {
             try {
                 setLoading(true);
+                setError("");
 
                 const response = await fetch(
-                    `${API_URL}/doctors/${id}`
+                    `${API_URL}/doctors/${doctorId}`,
+                    {
+                        credentials: "include",
+                    }
                 );
 
                 if (!response.ok) {
                     throw new Error(
-                        "Doctor not found"
+                        "Could not load doctor."
                     );
                 }
 
                 const data = await response.json();
 
                 setDoctor(data);
-            } catch (error) {
-                console.error(error);
-                setDoctor(null);
+            } catch (err) {
+                console.error(err);
+                setError(
+                    "Could not load doctor details."
+                );
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDoctor();
+        loadDoctor();
     }, [
-        id,
-        user,
+        doctorId,
+        session,
         sessionLoading,
         router,
     ]);
 
-    if (sessionLoading) {
+    if (sessionLoading || loading) {
         return (
-            <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="min-h-[70vh] flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }
 
-    if (!user) {
+    if (!session?.user) {
         return (
-            <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="min-h-[70vh] flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }
 
-    if (loading) {
+    if (error || !doctor) {
         return (
-            <div className="min-h-[60vh] flex items-center justify-center">
-                <span className="loading loading-spinner loading-lg"></span>
-            </div>
-        );
-    }
-
-    if (!doctor) {
-        return (
-            <div className="text-center py-20 px-6">
+            <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 px-4 text-center">
                 <h1 className="text-3xl font-bold">
                     Doctor Not Found
                 </h1>
 
-                <Link
-                    href="/appointments"
-                    className="btn btn-primary mt-6"
+                <p className="text-base-content/70">
+                    {error ||
+                        "The requested doctor could not be found."}
+                </p>
+
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() =>
+                        router.push("/appointments")
+                    }
                 >
-                    Back to Appointments
-                </Link>
+                    Back to All Appointments
+                </button>
             </div>
         );
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
-            <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                        {/* Doctor Image */}
-                        <div className="flex justify-center">
-                            <img
-                                src={doctor.image}
-                                alt={doctor.name}
-                                className="w-56 h-56 rounded-2xl object-cover shadow-md"
-                            />
-                        </div>
+        <main className="min-h-screen bg-base-200 py-12 px-4">
+            <div className="max-w-5xl mx-auto">
+                <div className="card lg:card-side bg-base-100 shadow-xl overflow-hidden">
+                    <figure className="lg:w-2/5 bg-base-200">
+                        <img
+                            src={doctor.image}
+                            alt={doctor.name}
+                            className="w-full h-full min-h-[420px] object-cover"
+                        />
+                    </figure>
 
-                        {/* Doctor Information */}
-                        <div className="md:col-span-2">
-                            <h1 className="text-3xl md:text-4xl font-bold">
-                                {doctor.name}
-                            </h1>
-
-                            <p className="text-xl text-primary font-semibold mt-2">
+                    <div className="card-body lg:w-3/5">
+                        <div>
+                            <p className="text-primary font-semibold mb-2">
                                 {doctor.specialty}
                             </p>
 
-                            <div className="mt-6 space-y-3">
-                                <p>
-                                    <strong>
-                                        Experience:
-                                    </strong>{" "}
-                                    {doctor.experience}
+                            <h1 className="text-3xl md:text-4xl font-bold">
+                                {doctor.name}
+                            </h1>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                            <div className="bg-base-200 rounded-xl p-4">
+                                <p className="text-sm opacity-70">
+                                    Experience
                                 </p>
-
-                                <p>
-                                    <strong>
-                                        Consultation Fee:
-                                    </strong>{" "}
-                                    ৳{doctor.fee}
+                                <p className="font-semibold">
+                                    {doctor.experience ||
+                                        "Not available"}
                                 </p>
-
-                                {doctor.rating && (
-                                    <p>
-                                        <strong>
-                                            Rating:
-                                        </strong>{" "}
-                                        ⭐ {doctor.rating}
-                                    </p>
-                                )}
-
-                                {doctor.hospital && (
-                                    <p>
-                                        <strong>
-                                            Hospital:
-                                        </strong>{" "}
-                                        {doctor.hospital}
-                                    </p>
-                                )}
-
-                                {doctor.location && (
-                                    <p>
-                                        <strong>
-                                            Location:
-                                        </strong>{" "}
-                                        {doctor.location}
-                                    </p>
-                                )}
                             </div>
 
-                            {doctor.availability &&
-                                doctor.availability.length > 0 && (
-                                    <div className="mt-6">
-                                        <h3 className="font-semibold mb-3">
-                                            Availability
-                                        </h3>
+                            <div className="bg-base-200 rounded-xl p-4">
+                                <p className="text-sm opacity-70">
+                                    Rating
+                                </p>
+                                <p className="font-semibold">
+                                    ⭐ {doctor.rating}
+                                </p>
+                            </div>
 
-                                        <div className="flex flex-wrap gap-2">
-                                            {doctor.availability.map(
-                                                (
-                                                    day,
-                                                    index
-                                                ) => (
-                                                    <span
-                                                        key={index}
-                                                        className="badge badge-primary badge-outline"
-                                                    >
-                                                        {day}
-                                                    </span>
-                                                )
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="bg-base-200 rounded-xl p-4">
+                                <p className="text-sm opacity-70">
+                                    Consultation Fee
+                                </p>
+                                <p className="font-semibold">
+                                    ৳{doctor.fee}
+                                </p>
+                            </div>
+
+                            <div className="bg-base-200 rounded-xl p-4">
+                                <p className="text-sm opacity-70">
+                                    Availability
+                                </p>
+                                <p className="font-semibold">
+                                    {Array.isArray(
+                                        doctor.availability
+                                    )
+                                        ? doctor.availability.join(
+                                            ", "
+                                        )
+                                        : doctor.availability ||
+                                        "Not available"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mt-4">
+                            <p>
+                                <strong>Hospital:</strong>{" "}
+                                {doctor.hospital ||
+                                    "Not available"}
+                            </p>
+
+                            <p>
+                                <strong>Location:</strong>{" "}
+                                {doctor.location ||
+                                    "Not available"}
+                            </p>
 
                             {doctor.description && (
-                                <div className="mt-6">
-                                    <h3 className="font-semibold mb-2">
+                                <div>
+                                    <h2 className="font-bold text-lg mb-1">
                                         About Doctor
-                                    </h3>
+                                    </h2>
 
                                     <p className="text-base-content/70 leading-relaxed">
-                                        {
-                                            doctor.description
-                                        }
+                                        {doctor.description}
                                     </p>
                                 </div>
                             )}
+                        </div>
 
-                            <div className="mt-8">
-                                <Link
-                                    href={`/book/${doctor.id}`}
-                                    className="btn btn-primary"
-                                >
-                                    Book Appointment
-                                </Link>
-                            </div>
+                        <div className="card-actions mt-6">
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() =>
+                                    router.push(
+                                        `/book/${doctor.id}`
+                                    )
+                                }
+                            >
+                                Book Appointment
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() =>
+                                    router.push(
+                                        "/appointments"
+                                    )
+                                }
+                            >
+                                Back
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     );
-};
-
-export default DoctorDetailsContent;
+}
