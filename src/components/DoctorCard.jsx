@@ -1,68 +1,76 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
 import { useSession } from "../lib/auth-client";
 
-const DoctorCard = ({ doctor }) => {
+export default function DoctorCard({ doctor }) {
     const router = useRouter();
-
-    const {
-        data: session,
-        isPending,
-    } = useSession();
-
-    const user = session?.user;
+    const { data: session, isPending } = useSession();
 
     const handleViewDetails = () => {
-        const doctorPath = `/doctor/${doctor.id}`;
+        const detailsPath = `/doctor/${doctor.id}`;
 
-        if (user) {
-            router.push(doctorPath);
+        if (!session?.user) {
+            router.push(
+                `/login?callbackUrl=${encodeURIComponent(detailsPath)}`
+            );
             return;
         }
 
-        router.push(
-            `/login?callbackUrl=${encodeURIComponent(
-                doctorPath
-            )}`
-        );
+        router.push(detailsPath);
     };
 
     return (
-        <div className="card bg-base-100 shadow-xl h-full">
-            <figure className="p-4">
+        <div className="card bg-base-100 shadow-xl border border-base-200 h-full">
+            <figure className="h-64 overflow-hidden">
                 <img
                     src={doctor.image}
                     alt={doctor.name}
-                    className="w-40 h-40 rounded-full object-cover"
+                    className="w-full h-full object-cover"
                 />
             </figure>
 
-            <div className="card-body text-center flex flex-col">
-                <h2 className="card-title justify-center">
+            <div className="card-body">
+                <h2 className="card-title text-xl">
                     {doctor.name}
                 </h2>
 
-                <p>{doctor.specialty}</p>
-
-                <p>
-                    Experience:{" "}
-                    {doctor.experience}
+                <p className="text-primary font-semibold">
+                    {doctor.specialty}
                 </p>
 
-                <p>
-                    Fee: ৳{doctor.fee}
-                </p>
+                <div className="space-y-1 text-sm">
+                    <p>
+                        <strong>Experience:</strong>{" "}
+                        {doctor.experience}
+                    </p>
 
-                <div className="mt-auto">
+                    <p>
+                        <strong>Hospital:</strong>{" "}
+                        {doctor.hospital}
+                    </p>
+
+                    <p>
+                        <strong>Location:</strong>{" "}
+                        {doctor.location}
+                    </p>
+
+                    <p>
+                        <strong>Fee:</strong> ৳{doctor.fee}
+                    </p>
+
+                    <p>
+                        <strong>Rating:</strong>{" "}
+                        ⭐ {doctor.rating}
+                    </p>
+                </div>
+
+                <div className="card-actions justify-end mt-4">
                     <button
                         type="button"
-                        onClick={
-                            handleViewDetails
-                        }
+                        onClick={handleViewDetails}
                         disabled={isPending}
-                        className="btn btn-primary mt-3"
+                        className="btn btn-primary"
                     >
                         {isPending ? (
                             <span className="loading loading-spinner loading-sm"></span>
@@ -74,6 +82,4 @@ const DoctorCard = ({ doctor }) => {
             </div>
         </div>
     );
-};
-
-export default DoctorCard;
+}
