@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Page(){return <main className="mx-auto max-w-3xl px-4 py-20"><h1 className="text-4xl font-bold">Privacy at DocAppoint</h1><p className="my-8 leading-8">DocAppoint uses account information to support authentication and booking management. Contact messages are stored for responding to enquiries. Do not submit urgent medical information through the contact form.</p><Link className="btn btn-primary" href="/contact">Contact us</Link></main>}

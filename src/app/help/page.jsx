@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Page(){return <main className="mx-auto max-w-3xl px-4 py-20"><h1 className="text-4xl font-bold">Help & Support</h1><p className="my-8 leading-8">To find a doctor, open the Explore page, apply filters, then view the doctor details. For booking questions or technical issues, use the Contact page.</p><Link className="btn btn-primary" href="/contact">Contact us</Link></main>}
