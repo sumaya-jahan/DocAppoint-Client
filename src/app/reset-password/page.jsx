@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { authClient } from "../../lib/auth-client";
 
-export default function ResetPassword() {
+function ResetPasswordForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
@@ -67,7 +67,10 @@ export default function ResetPassword() {
                     {!token ? (
                         <div className="text-center space-y-4">
                             <p>Invalid or expired password reset link.</p>
-                            <Link href="/forgot-password" className="btn btn-primary">
+                            <Link
+                                href="/forgot-password"
+                                className="btn btn-primary"
+                            >
                                 Request New Link
                             </Link>
                         </div>
@@ -100,7 +103,9 @@ export default function ResetPassword() {
                                     minLength={8}
                                     autoComplete="new-password"
                                     value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    onChange={(e) =>
+                                        setConfirmPassword(e.target.value)
+                                    }
                                     className="input input-bordered w-full"
                                 />
                             </div>
@@ -117,5 +122,19 @@ export default function ResetPassword() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function ResetPassword() {
+    return (
+        <Suspense
+            fallback={
+                <main className="min-h-screen flex items-center justify-center">
+                    <p>Loading password reset page...</p>
+                </main>
+            }
+        >
+            <ResetPasswordForm />
+        </Suspense>
     );
 }
