@@ -16,7 +16,21 @@ const empty = {
     rating: "",
     image: "",
     description: "",
+    experience: "",
+    availability: "",
 };
+
+const doctorFields = [
+    "name",
+    "specialty",
+    "location",
+    "fee",
+    "rating",
+    "image",
+    "description",
+    "experience",
+    "availability",
+];
 
 export default function AdminContent() {
     const { data: session, isPending } = useSession();
@@ -28,7 +42,7 @@ export default function AdminContent() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState(empty);
+    const [form, setForm] = useState({ ...empty });
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -68,18 +82,17 @@ export default function AdminContent() {
         request("/api/admin/overview")
             .then(setOverview)
             .catch((err) => setError(err.message));
-    }, [role]);
+    }, [role, success]);
 
     useEffect(() => {
         if (
             role !== "admin" ||
-            section === "Overview" ||
-            section === "Settings" ||
-            section === "Reports"
+            ["Overview", "Settings", "Reports"].includes(section)
         ) {
             return;
         }
 
+        let active = true;
         setBusy(true);
 
         const endpoint =
@@ -98,12 +111,21 @@ export default function AdminContent() {
         }
 
         request(`/api/admin/${endpoint}?${query}`)
-            .then(setTable)
-            .catch((err) => setError(err.message))
-            .finally(() => setBusy(false));
+            .then((data) => {
+                if (active) setTable(data);
+            })
+            .catch((err) => {
+                if (active) setError(err.message);
+            })
+            .finally(() => {
+                if (active) setBusy(false);
+            });
+
+        return () => {
+            active = false;
+        };
     }, [role, section, page, search, success]);
 
-    // Scroll to Add/Edit form after it opens
     useEffect(() => {
         if (editing !== null && section === "Doctors") {
             formRef.current?.scrollIntoView({
@@ -144,7 +166,6 @@ export default function AdminContent() {
         setError("");
         setSuccess("");
 
-        // Also works when editing another doctor while form is already open
         requestAnimationFrame(() => {
             formRef.current?.scrollIntoView({
                 behavior: "smooth",
@@ -155,6 +176,7 @@ export default function AdminContent() {
 
     async function save(event) {
         event.preventDefault();
+
         setBusy(true);
         setError("");
         setSuccess("");
@@ -163,9 +185,21 @@ export default function AdminContent() {
             const input = {
                 ...form,
                 fee: Number(form.fee),
-                rating: Number(form.rating),
             };
 
+            if (form.rating !== "") {
+                input.rating = Number(form.rating);
+            } else {
+                delete input.rating;
+            }
+
+            if (form.experience !== "") {
+                input.experience = Number(form.experience);
+            } else {
+                delete input.experience;
+            }
+
+            if (!input.availability) delete input.availability;
             if (!input.image) delete input.image;
             if (!input.description) delete input.description;
 
@@ -183,6 +217,7 @@ export default function AdminContent() {
 
             setEditing(null);
             setForm({ ...empty });
+
             setSuccess(
                 isEdit
                     ? "Doctor updated successfully!"
@@ -218,7 +253,7 @@ export default function AdminContent() {
         }
     }
 
-    if (isPending || role === null) {
+    if (isPending || (session?.user && role === null)) {
         return <p className="p-8">Checking access…</p>;
     }
 
@@ -278,7 +313,6 @@ export default function AdminContent() {
                     : 5 + (index * 90) / (months.length - 1);
 
             const y = 95 - (item.count / maxMonth) * 85;
-
             return `${x},${y}`;
         })
         .join(" ");
@@ -371,7 +405,7 @@ export default function AdminContent() {
                                     </div>
 
                                     <div className="grid md:grid-cols-2 gap-5">
-                                        {/* Line chart */}
+                                        {/* Line Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Appointments by month (line chart)
@@ -416,7 +450,7 @@ export default function AdminContent() {
                                             )}
                                         </div>
 
-                                        {/* Bar chart */}
+                                        {/* Bar Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Doctors by specialty (bar chart)
@@ -424,10 +458,7 @@ export default function AdminContent() {
 
                                             {specialty.length ? (
                                                 specialty.map((item) => (
-                                                    <div
-                                                        key={item.name}
-                                                        className="my-2"
-                                                    >
+                                                    <div key={item.name} className="my-2">
                                                         <div className="flex justify-between text-sm">
                                                             <span>{item.name}</span>
                                                             <span>{item.count}</span>
@@ -455,7 +486,7 @@ export default function AdminContent() {
                                             )}
                                         </div>
 
-                                        {/* Pie chart */}
+                                        {/* Pie Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Appointment status (pie chart)
@@ -535,7 +566,7 @@ export default function AdminContent() {
                                 </button>
                             </div>
 
-                            {/* Add/Edit Doctor Form */}
+                            {/* Add / Edit Doctor Form */}
                             {editing !== null && (
                                 <form
                                     ref={formRef}
@@ -548,15 +579,7 @@ export default function AdminContent() {
                                             : "Add New Doctor"}
                                     </h2>
 
-                                    {[
-                                        "name",
-                                        "specialty",
-                                        "location",
-                                        "fee",
-                                        "rating",
-                                        "image",
-                                        "description",
-                                    ].map((key) => (
+                                    {doctorFields.map((key) => (
                                         <label
                                             key={key}
                                             className="form-control"
@@ -568,26 +591,31 @@ export default function AdminContent() {
                                             <input
                                                 className="input input-bordered w-full"
                                                 type={
-                                                    key === "fee" || key === "rating"
+                                                    ["fee", "rating", "experience"].includes(
+                                                        key
+                                                    )
                                                         ? "number"
                                                         : key === "image"
                                                             ? "url"
                                                             : "text"
                                                 }
                                                 min={
-                                                    key === "fee" || key === "rating"
+                                                    ["fee", "rating", "experience"].includes(
+                                                        key
+                                                    )
                                                         ? 0
                                                         : undefined
                                                 }
                                                 max={
-                                                    key === "rating"
-                                                        ? 5
-                                                        : undefined
+                                                    key === "rating" ? 5 : undefined
                                                 }
                                                 step={
                                                     key === "rating"
                                                         ? "0.1"
-                                                        : undefined
+                                                        : key === "fee" ||
+                                                            key === "experience"
+                                                            ? "1"
+                                                            : undefined
                                                 }
                                                 required={[
                                                     "name",
@@ -633,7 +661,7 @@ export default function AdminContent() {
                         </>
                     )}
 
-                    {/* Doctors, Users, Messages Table */}
+                    {/* Data Tables */}
                     {["Doctors", "Users", "Messages"].includes(
                         section
                     ) && (
@@ -679,15 +707,12 @@ export default function AdminContent() {
                                                             <td>{row.specialty}</td>
                                                             <td>{row.location}</td>
                                                             <td>{row.fee}</td>
-
                                                             <td>
                                                                 <div className="flex gap-2">
                                                                     <button
                                                                         type="button"
                                                                         className="btn btn-xs"
-                                                                        onClick={() =>
-                                                                            openEdit(row)
-                                                                        }
+                                                                        onClick={() => openEdit(row)}
                                                                     >
                                                                         Edit
                                                                     </button>
@@ -795,7 +820,9 @@ export default function AdminContent() {
                     {/* Reports */}
                     {section === "Reports" && (
                         <div className="bg-base-200 p-5 rounded-xl">
-                            <h2 className="font-semibold">Reports</h2>
+                            <h2 className="font-semibold">
+                                Reports
+                            </h2>
                             <p>
                                 Use Overview to inspect live monthly
                                 appointments, appointment status and
@@ -818,8 +845,8 @@ export default function AdminContent() {
                                 >
                                     user dashboard
                                 </Link>
-                                . Admin roles are granted by the server
-                                administrator.
+                                . Admin roles are granted by the
+                                server administrator.
                             </p>
                         </div>
                     )}
