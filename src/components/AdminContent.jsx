@@ -15,6 +15,7 @@ const empty = {
     fee: "",
     rating: "",
     image: "",
+    images: "",
     description: "",
     experience: "",
     availability: "",
@@ -153,15 +154,18 @@ export default function AdminContent() {
     }
 
     function openEdit(doctor) {
-        setForm(
-            Object.fromEntries(
-                Object.keys(empty).map((key) => [
-                    key,
-                    doctor[key] ?? "",
-                ])
-            )
+        const values = Object.fromEntries(
+            Object.keys(empty).map((key) => [
+                key,
+                key === "images"
+                    ? Array.isArray(doctor.images)
+                        ? doctor.images.join("\n")
+                        : ""
+                    : doctor[key] ?? "",
+            ])
         );
 
+        setForm(values);
         setEditing(doctor);
         setError("");
         setSuccess("");
@@ -182,9 +186,33 @@ export default function AdminContent() {
         setSuccess("");
 
         try {
+            const imageURLs = [
+                ...new Set(
+                    form.images
+                        .split(/\r?\n/)
+                        .map((url) => url.trim())
+                        .filter(Boolean)
+                ),
+            ];
+
+            if (imageURLs.length > 10) {
+                throw new Error("Maximum 10 gallery images allowed.");
+            }
+
+            if (
+                imageURLs.some(
+                    (url) => !/^https:\/\/\S+$/i.test(url)
+                )
+            ) {
+                throw new Error(
+                    "Each gallery image must have a valid HTTPS URL."
+                );
+            }
+
             const input = {
                 ...form,
                 fee: Number(form.fee),
+                images: imageURLs,
             };
 
             if (form.rating !== "") {
@@ -313,6 +341,7 @@ export default function AdminContent() {
                     : 5 + (index * 90) / (months.length - 1);
 
             const y = 95 - (item.count / maxMonth) * 85;
+
             return `${x},${y}`;
         })
         .join(" ");
@@ -332,7 +361,8 @@ export default function AdminContent() {
                 ? (item.count / totalStatus) * 100
                 : 0;
 
-            return `${colors[index % colors.length]} ${start}% ${pieOffset}%`;
+            return `${colors[index % colors.length]
+                } ${start}% ${pieOffset}%`;
         })
         .join(",");
 
@@ -343,7 +373,6 @@ export default function AdminContent() {
             </h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
-                {/* Sidebar */}
                 <aside className="bg-base-200 rounded-xl p-3 flex flex-col gap-2">
                     {[
                         "Overview",
@@ -356,7 +385,9 @@ export default function AdminContent() {
                         <button
                             key={tab}
                             type="button"
-                            className={`btn justify-start ${section === tab ? "btn-primary" : "btn-ghost"
+                            className={`btn justify-start ${section === tab
+                                    ? "btn-primary"
+                                    : "btn-ghost"
                                 }`}
                             onClick={() => navigate(tab)}
                         >
@@ -378,7 +409,6 @@ export default function AdminContent() {
                         </p>
                     )}
 
-                    {/* Overview */}
                     {section === "Overview" && (
                         <>
                             {!overview ? (
@@ -405,7 +435,6 @@ export default function AdminContent() {
                                     </div>
 
                                     <div className="grid md:grid-cols-2 gap-5">
-                                        {/* Line Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Appointments by month (line chart)
@@ -426,7 +455,6 @@ export default function AdminContent() {
                                                             stroke="currentColor"
                                                             strokeWidth="0.4"
                                                         />
-
                                                         <polyline
                                                             points={points}
                                                             fill="none"
@@ -450,7 +478,6 @@ export default function AdminContent() {
                                             )}
                                         </div>
 
-                                        {/* Bar Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Doctors by specialty (bar chart)
@@ -458,7 +485,10 @@ export default function AdminContent() {
 
                                             {specialty.length ? (
                                                 specialty.map((item) => (
-                                                    <div key={item.name} className="my-2">
+                                                    <div
+                                                        key={item.name}
+                                                        className="my-2"
+                                                    >
                                                         <div className="flex justify-between text-sm">
                                                             <span>{item.name}</span>
                                                             <span>{item.count}</span>
@@ -486,7 +516,6 @@ export default function AdminContent() {
                                             )}
                                         </div>
 
-                                        {/* Pie Chart */}
                                         <div className="bg-base-200 rounded-xl p-4">
                                             <h2 className="font-semibold mb-3">
                                                 Appointment status (pie chart)
@@ -515,13 +544,13 @@ export default function AdminContent() {
                                                                         style={{
                                                                             background:
                                                                                 colors[
-                                                                                index % colors.length
+                                                                                index %
+                                                                                colors.length
                                                                                 ],
                                                                         }}
                                                                     />
                                                                     {item.name}
                                                                 </span>
-
                                                                 <span>{item.count}</span>
                                                             </div>
                                                         ))}
@@ -537,7 +566,6 @@ export default function AdminContent() {
                         </>
                     )}
 
-                    {/* Doctors */}
                     {section === "Doctors" && (
                         <>
                             <div className="flex flex-wrap gap-3 items-end justify-between">
@@ -545,7 +573,6 @@ export default function AdminContent() {
                                     <span className="label-text">
                                         Search doctor
                                     </span>
-
                                     <input
                                         className="input input-bordered"
                                         value={search}
@@ -566,7 +593,6 @@ export default function AdminContent() {
                                 </button>
                             </div>
 
-                            {/* Add / Edit Doctor Form */}
                             {editing !== null && (
                                 <form
                                     ref={formRef}
@@ -591,29 +617,36 @@ export default function AdminContent() {
                                             <input
                                                 className="input input-bordered w-full"
                                                 type={
-                                                    ["fee", "rating", "experience"].includes(
-                                                        key
-                                                    )
+                                                    [
+                                                        "fee",
+                                                        "rating",
+                                                        "experience",
+                                                    ].includes(key)
                                                         ? "number"
                                                         : key === "image"
                                                             ? "url"
                                                             : "text"
                                                 }
                                                 min={
-                                                    ["fee", "rating", "experience"].includes(
-                                                        key
-                                                    )
+                                                    [
+                                                        "fee",
+                                                        "rating",
+                                                        "experience",
+                                                    ].includes(key)
                                                         ? 0
                                                         : undefined
                                                 }
                                                 max={
-                                                    key === "rating" ? 5 : undefined
+                                                    key === "rating"
+                                                        ? 5
+                                                        : undefined
                                                 }
                                                 step={
                                                     key === "rating"
                                                         ? "0.1"
-                                                        : key === "fee" ||
-                                                            key === "experience"
+                                                        : ["fee", "experience"].includes(
+                                                            key
+                                                        )
                                                             ? "1"
                                                             : undefined
                                                 }
@@ -633,6 +666,36 @@ export default function AdminContent() {
                                             />
                                         </label>
                                     ))}
+
+                                    <label className="form-control col-span-full">
+                                        <span className="label-text font-semibold">
+                                            Gallery Images (one HTTPS URL per line)
+                                        </span>
+
+                                        <textarea
+                                            className="textarea textarea-bordered w-full min-h-32"
+                                            value={form.images}
+                                            onChange={(event) =>
+                                                setForm((previous) => ({
+                                                    ...previous,
+                                                    images: event.target.value,
+                                                }))
+                                            }
+                                            placeholder={
+                                                "https://example.com/photo-1.jpg\nhttps://example.com/photo-2.jpg"
+                                            }
+                                            aria-describedby="gallery-help"
+                                        />
+
+                                        <span
+                                            id="gallery-help"
+                                            className="text-sm text-base-content/70 mt-1"
+                                        >
+                                            Add up to 10 different image URLs.
+                                            Use photos you have permission to use.
+                                            The main Image URL is kept separately.
+                                        </span>
+                                    </label>
 
                                     <div className="col-span-full flex gap-2">
                                         <button
@@ -661,7 +724,6 @@ export default function AdminContent() {
                         </>
                     )}
 
-                    {/* Data Tables */}
                     {["Doctors", "Users", "Messages"].includes(
                         section
                     ) && (
@@ -707,12 +769,15 @@ export default function AdminContent() {
                                                             <td>{row.specialty}</td>
                                                             <td>{row.location}</td>
                                                             <td>{row.fee}</td>
+
                                                             <td>
                                                                 <div className="flex gap-2">
                                                                     <button
                                                                         type="button"
                                                                         className="btn btn-xs"
-                                                                        onClick={() => openEdit(row)}
+                                                                        onClick={() =>
+                                                                            openEdit(row)
+                                                                        }
                                                                     >
                                                                         Edit
                                                                     </button>
@@ -773,15 +838,14 @@ export default function AdminContent() {
                                         </tbody>
                                     </table>
 
-                                    {busy && (
-                                        <p className="p-4">Loading…</p>
-                                    )}
+                                    {busy && <p className="p-4">Loading…</p>}
 
-                                    {!busy && table?.items?.length === 0 && (
-                                        <p className="p-4">
-                                            No records found.
-                                        </p>
-                                    )}
+                                    {!busy &&
+                                        table?.items?.length === 0 && (
+                                            <p className="p-4">
+                                                No records found.
+                                            </p>
+                                        )}
                                 </div>
 
                                 <div className="flex justify-between items-center">
@@ -817,12 +881,9 @@ export default function AdminContent() {
                             </>
                         )}
 
-                    {/* Reports */}
                     {section === "Reports" && (
                         <div className="bg-base-200 p-5 rounded-xl">
-                            <h2 className="font-semibold">
-                                Reports
-                            </h2>
+                            <h2 className="font-semibold">Reports</h2>
                             <p>
                                 Use Overview to inspect live monthly
                                 appointments, appointment status and
@@ -831,7 +892,6 @@ export default function AdminContent() {
                         </div>
                     )}
 
-                    {/* Settings */}
                     {section === "Settings" && (
                         <div className="bg-base-200 p-5 rounded-xl">
                             <h2 className="font-semibold">
@@ -845,8 +905,8 @@ export default function AdminContent() {
                                 >
                                     user dashboard
                                 </Link>
-                                . Admin roles are granted by the
-                                server administrator.
+                                . Admin roles are granted by the server
+                                administrator.
                             </p>
                         </div>
                     )}
