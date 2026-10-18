@@ -10,7 +10,10 @@ import { signIn } from "../lib/auth-client";
 export default function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+
     const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
 
     const requested = searchParams.get("callbackUrl");
     const callbackUrl =
@@ -21,15 +24,11 @@ export default function LoginContent() {
     const handleLogin = async (event) => {
         event.preventDefault();
 
-        const form = event.currentTarget;
-        const email = form.elements.namedItem("email").value.trim();
-        const password = form.elements.namedItem("password").value;
-
         try {
             setLoading(true);
 
             const result = await signIn.email({
-                email,
+                email: email.trim(),
                 password,
             });
 
@@ -67,6 +66,20 @@ export default function LoginContent() {
         }
     };
 
+    const handleDemoLogin = () => {
+        const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
+        const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+
+        if (!demoEmail || !demoPassword) {
+            toast.error("Demo account is not configured yet.");
+            return;
+        }
+
+        setEmail(demoEmail);
+        setPassword(demoPassword);
+        toast.success("Demo credentials filled. Click Login.");
+    };
+
     return (
         <main className="min-h-screen flex items-center justify-center px-4 py-10">
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
@@ -88,6 +101,8 @@ export default function LoginContent() {
                                 autoComplete="email"
                                 placeholder="Enter your email"
                                 className="input input-bordered w-full"
+                                value={email}
+                                onChange={(event) => setEmail(event.target.value)}
                             />
                         </div>
 
@@ -103,6 +118,8 @@ export default function LoginContent() {
                                 autoComplete="current-password"
                                 placeholder="Enter your password"
                                 className="input input-bordered w-full"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
                             />
                         </div>
 
@@ -123,6 +140,15 @@ export default function LoginContent() {
                             {loading ? "Logging in..." : "Login"}
                         </button>
                     </form>
+
+                    <button
+                        type="button"
+                        onClick={handleDemoLogin}
+                        disabled={loading}
+                        className="btn btn-secondary w-full mt-3"
+                    >
+                        Fill Demo Login
+                    </button>
 
                     <div className="divider">OR</div>
 
