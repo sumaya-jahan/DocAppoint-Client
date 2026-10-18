@@ -52,6 +52,80 @@ function ReportBar({ name, count, max }) {
     );
 }
 
+function AdminSettings({ user, onNavigate }) {
+    return (
+        <section className="space-y-5">
+            <h2 className="text-2xl font-bold">Admin Settings</h2>
+
+            <div className="rounded-xl bg-base-200 p-5 space-y-3">
+                <h3 className="text-lg font-semibold">
+                    Account Information
+                </h3>
+                <p>
+                    <strong>Name:</strong> {user?.name || "Not provided"}
+                </p>
+                <p className="break-all">
+                    <strong>Email:</strong> {user?.email || "Not available"}
+                </p>
+                <Link href="/dashboard" className="btn btn-primary">
+                    Edit Profile
+                </Link>
+            </div>
+
+            <div className="rounded-xl bg-base-200 p-5 space-y-3">
+                <h3 className="text-lg font-semibold">
+                    Account Security
+                </h3>
+                <p>Reset your password using your registered email.</p>
+                <Link
+                    href="/forgot-password"
+                    className="btn btn-outline"
+                >
+                    Reset Password
+                </Link>
+            </div>
+
+            <div className="rounded-xl bg-base-200 p-5 space-y-3">
+                <h3 className="text-lg font-semibold">
+                    Doctor Management
+                </h3>
+                <p>Add, edit and manage doctor information.</p>
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => onNavigate("Doctors")}
+                >
+                    Manage Doctors
+                </button>
+            </div>
+
+            <div className="rounded-xl bg-base-200 p-5 space-y-3">
+                <h3 className="text-lg font-semibold">Reports</h3>
+                <p>View live reports and export data as CSV.</p>
+                <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => onNavigate("Reports")}
+                >
+                    Open Reports
+                </button>
+            </div>
+
+            <div className="rounded-xl bg-base-200 p-5 space-y-3">
+                <h3 className="text-lg font-semibold">Messages</h3>
+                <p>View messages received through the Contact form.</p>
+                <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => onNavigate("Messages")}
+                >
+                    View Messages
+                </button>
+            </div>
+        </section>
+    );
+}
+
 export default function AdminContent() {
     const { data: session, isPending } = useSession();
 
@@ -91,6 +165,8 @@ export default function AdminContent() {
 
     async function loadOverview() {
         setReportBusy(true);
+        setError("");
+
         try {
             const data = await request("/api/admin/overview");
             setOverview(data);
@@ -136,7 +212,6 @@ export default function AdminContent() {
         }
 
         let active = true;
-
         setBusy(true);
 
         const endpoint =
@@ -223,7 +298,6 @@ export default function AdminContent() {
 
     async function save(event) {
         event.preventDefault();
-
         setBusy(true);
         setError("");
         setSuccess("");
@@ -337,19 +411,16 @@ export default function AdminContent() {
             ["Summary", "Appointments", overview.appointments],
             ["Summary", "Users", overview.users],
             ["Summary", "Messages", overview.contacts],
-
             ...months.map((item) => [
                 "Monthly Appointments",
                 item._id,
                 item.count,
             ]),
-
             ...specialties.map((item) => [
                 "Doctor Specialties",
                 item._id,
                 item.count,
             ]),
-
             ...statuses.map((item) => [
                 "Appointment Status",
                 item._id,
@@ -362,7 +433,7 @@ export default function AdminContent() {
                 row
                     .map((cell) => {
                         const value = String(cell ?? "");
-                        const safe = /^[\s]*[=+\-@]/.test(value)
+                        const safe = /^\s*[=+\-@]/.test(value)
                             ? `'${value}`
                             : value;
 
@@ -455,7 +526,6 @@ export default function AdminContent() {
                     : 5 + (index * 90) / (months.length - 1);
 
             const y = 95 - (item.count / maxMonth) * 85;
-
             return `${x},${y}`;
         })
         .join(" ");
@@ -645,7 +715,6 @@ export default function AdminContent() {
                                                                     />
                                                                     {item.name}
                                                                 </span>
-
                                                                 <span>{item.count}</span>
                                                             </div>
                                                         ))}
@@ -668,7 +737,6 @@ export default function AdminContent() {
                                     <span className="label-text">
                                         Search doctor
                                     </span>
-
                                     <input
                                         className="input input-bordered"
                                         value={search}
@@ -865,7 +933,6 @@ export default function AdminContent() {
                                                             <td>{row.specialty}</td>
                                                             <td>{row.location}</td>
                                                             <td>{row.fee}</td>
-
                                                             <td>
                                                                 <div className="flex gap-2">
                                                                     <button
@@ -1095,7 +1162,6 @@ export default function AdminContent() {
                                                                 <th>Percentage</th>
                                                             </tr>
                                                         </thead>
-
                                                         <tbody>
                                                             {status.map((item) => (
                                                                 <tr key={item.name}>
@@ -1125,23 +1191,10 @@ export default function AdminContent() {
                     )}
 
                     {section === "Settings" && (
-                        <div className="bg-base-200 p-5 rounded-xl">
-                            <h2 className="font-semibold">
-                                Account settings
-                            </h2>
-
-                            <p>
-                                Update your account information in the{" "}
-                                <Link
-                                    href="/dashboard"
-                                    className="link"
-                                >
-                                    user dashboard
-                                </Link>
-                                . Admin roles are granted by the server
-                                administrator.
-                            </p>
-                        </div>
+                        <AdminSettings
+                            user={session?.user}
+                            onNavigate={navigate}
+                        />
                     )}
                 </main>
             </div>
