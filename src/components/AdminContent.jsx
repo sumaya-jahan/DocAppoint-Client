@@ -33,6 +33,25 @@ const doctorFields = [
     "availability",
 ];
 
+function ReportBar({ name, count, max }) {
+    return (
+        <div className="mb-4">
+            <div className="mb-1 flex justify-between gap-3 text-sm">
+                <span>{name}</span>
+                <strong>{count}</strong>
+            </div>
+            <div className="h-5 overflow-hidden rounded bg-base-300">
+                <div
+                    className="h-full bg-primary"
+                    style={{
+                        width: `${(count / Math.max(1, max)) * 100}%`,
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
+
 export default function AdminContent() {
     const { data: session, isPending } = useSession();
 
@@ -45,6 +64,7 @@ export default function AdminContent() {
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ ...empty });
     const [busy, setBusy] = useState(false);
+    const [reportBusy, setReportBusy] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -69,6 +89,18 @@ export default function AdminContent() {
         return data;
     }
 
+    async function loadOverview() {
+        setReportBusy(true);
+        try {
+            const data = await request("/api/admin/overview");
+            setOverview(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setReportBusy(false);
+        }
+    }
+
     useEffect(() => {
         if (!session?.user) return;
 
@@ -80,9 +112,19 @@ export default function AdminContent() {
     useEffect(() => {
         if (role !== "admin") return;
 
+        let active = true;
+
         request("/api/admin/overview")
-            .then(setOverview)
-            .catch((err) => setError(err.message));
+            .then((data) => {
+                if (active) setOverview(data);
+            })
+            .catch((err) => {
+                if (active) setError(err.message);
+            });
+
+        return () => {
+            active = false;
+        };
     }, [role, success]);
 
     useEffect(() => {
@@ -94,6 +136,7 @@ export default function AdminContent() {
         }
 
         let active = true;
+
         setBusy(true);
 
         const endpoint =
@@ -281,6 +324,70 @@ export default function AdminContent() {
         }
     }
 
+    function exportCSV() {
+        if (!overview) return;
+
+        const months = overview.byMonth || [];
+        const specialties = overview.bySpecialty || [];
+        const statuses = overview.byStatus || [];
+
+        const rows = [
+            ["Report", "Category", "Count"],
+            ["Summary", "Doctors", overview.doctors],
+            ["Summary", "Appointments", overview.appointments],
+            ["Summary", "Users", overview.users],
+            ["Summary", "Messages", overview.contacts],
+
+            ...months.map((item) => [
+                "Monthly Appointments",
+                item._id,
+                item.count,
+            ]),
+
+            ...specialties.map((item) => [
+                "Doctor Specialties",
+                item._id,
+                item.count,
+            ]),
+
+            ...statuses.map((item) => [
+                "Appointment Status",
+                item._id,
+                item.count,
+            ]),
+        ];
+
+        const csv = rows
+            .map((row) =>
+                row
+                    .map((cell) => {
+                        const value = String(cell ?? "");
+                        const safe = /^[\s]*[=+\-@]/.test(value)
+                            ? `'${value}`
+                            : value;
+
+                        return `"${safe.replaceAll('"', '""')}"`;
+                    })
+                    .join(",")
+            )
+            .join("\r\n");
+
+        const blob = new Blob(["\uFEFF", csv], {
+            type: "text/csv;charset=utf-8",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "docappoint-reports.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     if (isPending || (session?.user && role === null)) {
         return <p className="p-8">Checking access…</p>;
     }
@@ -318,10 +425,12 @@ export default function AdminContent() {
         count: item.count,
     }));
 
-    const specialty = (overview?.bySpecialty || []).map((item) => ({
-        name: item._id,
-        count: item.count,
-    }));
+    const specialty = (overview?.bySpecialty || []).map(
+        (item) => ({
+            name: item._id,
+            count: item.count,
+        })
+    );
 
     const status = (overview?.byStatus || []).map((item) => ({
         name: item._id,
@@ -331,6 +440,11 @@ export default function AdminContent() {
     const maxMonth = Math.max(
         1,
         ...months.map((item) => item.count)
+    );
+
+    const maxSpecialty = Math.max(
+        1,
+        ...specialty.map((item) => item.count)
     );
 
     const points = months
@@ -485,31 +599,12 @@ export default function AdminContent() {
 
                                             {specialty.length ? (
                                                 specialty.map((item) => (
-                                                    <div
+                                                    <ReportBar
                                                         key={item.name}
-                                                        className="my-2"
-                                                    >
-                                                        <div className="flex justify-between text-sm">
-                                                            <span>{item.name}</span>
-                                                            <span>{item.count}</span>
-                                                        </div>
-
-                                                        <div className="h-5 bg-base-300 rounded overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-primary"
-                                                                style={{
-                                                                    width: `${(item.count /
-                                                                            Math.max(
-                                                                                ...specialty.map(
-                                                                                    (s) => s.count
-                                                                                )
-                                                                            )) *
-                                                                        100
-                                                                        }%`,
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                        name={item.name}
+                                                        count={item.count}
+                                                        max={maxSpecialty}
+                                                    />
                                                 ))
                                             ) : (
                                                 <p>No doctor specialties yet.</p>
@@ -544,13 +639,13 @@ export default function AdminContent() {
                                                                         style={{
                                                                             background:
                                                                                 colors[
-                                                                                index %
-                                                                                colors.length
+                                                                                index % colors.length
                                                                                 ],
                                                                         }}
                                                                     />
                                                                     {item.name}
                                                                 </span>
+
                                                                 <span>{item.count}</span>
                                                             </div>
                                                         ))}
@@ -573,6 +668,7 @@ export default function AdminContent() {
                                     <span className="label-text">
                                         Search doctor
                                     </span>
+
                                     <input
                                         className="input input-bordered"
                                         value={search}
@@ -882,13 +978,149 @@ export default function AdminContent() {
                         )}
 
                     {section === "Reports" && (
-                        <div className="bg-base-200 p-5 rounded-xl">
-                            <h2 className="font-semibold">Reports</h2>
-                            <p>
-                                Use Overview to inspect live monthly
-                                appointments, appointment status and
-                                doctor specialty distribution.
-                            </p>
+                        <div className="space-y-5">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h2 className="text-2xl font-bold">
+                                    Live Reports
+                                </h2>
+
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        disabled={reportBusy}
+                                        onClick={loadOverview}
+                                    >
+                                        {reportBusy
+                                            ? "Refreshing…"
+                                            : "Refresh Reports"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        disabled={!overview || reportBusy}
+                                        onClick={exportCSV}
+                                    >
+                                        Export CSV
+                                    </button>
+                                </div>
+                            </div>
+
+                            {!overview ? (
+                                <p>Loading reports…</p>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                        {[
+                                            ["Total Doctors", overview.doctors],
+                                            [
+                                                "Total Appointments",
+                                                overview.appointments,
+                                            ],
+                                            ["Total Users", overview.users],
+                                            [
+                                                "Contact Messages",
+                                                overview.contacts,
+                                            ],
+                                        ].map(([label, value]) => (
+                                            <div
+                                                key={label}
+                                                className="rounded-xl bg-base-200 p-5"
+                                            >
+                                                <p className="text-sm">{label}</p>
+                                                <strong className="text-3xl">
+                                                    {value}
+                                                </strong>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="grid gap-5 lg:grid-cols-2">
+                                        <div className="rounded-xl bg-base-200 p-5">
+                                            <h3 className="mb-4 text-lg font-bold">
+                                                Monthly Appointments
+                                            </h3>
+
+                                            {months.length === 0 ? (
+                                                <p>No monthly data available.</p>
+                                            ) : (
+                                                months.map((item) => (
+                                                    <ReportBar
+                                                        key={item.name}
+                                                        name={item.name}
+                                                        count={item.count}
+                                                        max={maxMonth}
+                                                    />
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <div className="rounded-xl bg-base-200 p-5">
+                                            <h3 className="mb-4 text-lg font-bold">
+                                                Doctors by Specialty
+                                            </h3>
+
+                                            {specialty.length === 0 ? (
+                                                <p>No specialty data available.</p>
+                                            ) : (
+                                                specialty.map((item) => (
+                                                    <ReportBar
+                                                        key={item.name}
+                                                        name={item.name}
+                                                        count={item.count}
+                                                        max={maxSpecialty}
+                                                    />
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <div className="rounded-xl bg-base-200 p-5 lg:col-span-2">
+                                            <h3 className="mb-4 text-lg font-bold">
+                                                Appointment Status Report
+                                            </h3>
+
+                                            {status.length === 0 ? (
+                                                <p>
+                                                    No appointment status data
+                                                    available.
+                                                </p>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="table table-zebra w-full">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Status</th>
+                                                                <th>Appointments</th>
+                                                                <th>Percentage</th>
+                                                            </tr>
+                                                        </thead>
+
+                                                        <tbody>
+                                                            {status.map((item) => (
+                                                                <tr key={item.name}>
+                                                                    <td>{item.name}</td>
+                                                                    <td>{item.count}</td>
+                                                                    <td>
+                                                                        {totalStatus
+                                                                            ? (
+                                                                                (item.count /
+                                                                                    totalStatus) *
+                                                                                100
+                                                                            ).toFixed(1)
+                                                                            : "0.0"}
+                                                                        %
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -897,6 +1129,7 @@ export default function AdminContent() {
                             <h2 className="font-semibold">
                                 Account settings
                             </h2>
+
                             <p>
                                 Update your account information in the{" "}
                                 <Link
