@@ -33,6 +33,26 @@ const doctorFields = [
     "availability",
 ];
 
+function normalizeExperience(input) {
+    if (input === null || input === undefined || input === "") {
+        return "";
+    }
+
+    const match = String(input)
+        .trim()
+        .match(/^(\d+(?:\.\d+)?)\s*(?:years?|yrs?)?$/i);
+
+    return match ? match[1] : "";
+}
+
+function normalizeAvailability(input) {
+    if (Array.isArray(input)) {
+        return input.join("\n");
+    }
+
+    return typeof input === "string" ? input : "";
+}
+
 function ReportBar({ name, count, max }) {
     return (
         <div className="mb-4">
@@ -58,12 +78,8 @@ function AdminSettings({ user, onNavigate }) {
             <h2 className="text-2xl font-bold">Admin Settings</h2>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
-                    Account Information
-                </h3>
-                <p>
-                    <strong>Name:</strong> {user?.name || "Not provided"}
-                </p>
+                <h3 className="text-lg font-semibold">Account Information</h3>
+                <p><strong>Name:</strong> {user?.name || "Not provided"}</p>
                 <p className="break-all">
                     <strong>Email:</strong> {user?.email || "Not available"}
                 </p>
@@ -73,22 +89,15 @@ function AdminSettings({ user, onNavigate }) {
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
-                    Account Security
-                </h3>
+                <h3 className="text-lg font-semibold">Account Security</h3>
                 <p>Reset your password using your registered email.</p>
-                <Link
-                    href="/forgot-password"
-                    className="btn btn-outline"
-                >
+                <Link href="/forgot-password" className="btn btn-outline">
                     Reset Password
                 </Link>
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
-                    Doctor Management
-                </h3>
+                <h3 className="text-lg font-semibold">Doctor Management</h3>
                 <p>Add, edit and manage doctor information.</p>
                 <button
                     type="button"
@@ -273,14 +282,21 @@ export default function AdminContent() {
 
     function openEdit(doctor) {
         const values = Object.fromEntries(
-            Object.keys(empty).map((key) => [
-                key,
-                key === "images"
-                    ? Array.isArray(doctor.images)
+            Object.keys(empty).map((key) => {
+                let current = doctor[key] ?? "";
+
+                if (key === "images") {
+                    current = Array.isArray(doctor.images)
                         ? doctor.images.join("\n")
-                        : ""
-                    : doctor[key] ?? "",
-            ])
+                        : "";
+                } else if (key === "availability") {
+                    current = normalizeAvailability(doctor.availability);
+                } else if (key === "experience") {
+                    current = normalizeExperience(doctor.experience);
+                }
+
+                return [key, current];
+            })
         );
 
         setForm(values);
@@ -305,7 +321,7 @@ export default function AdminContent() {
         try {
             const imageURLs = [
                 ...new Set(
-                    form.images
+                    String(form.images || "")
                         .split(/\r?\n/)
                         .map((url) => url.trim())
                         .filter(Boolean)
@@ -316,14 +332,14 @@ export default function AdminContent() {
                 throw new Error("Maximum 10 gallery images allowed.");
             }
 
-            if (
-                imageURLs.some(
-                    (url) => !/^https:\/\/\S+$/i.test(url)
-                )
-            ) {
+            if (imageURLs.some((url) => !/^https:\/\/\S+$/i.test(url))) {
                 throw new Error(
                     "Each gallery image must have a valid HTTPS URL."
                 );
+            }
+
+            if (String(form.fee).trim() === "") {
+                throw new Error("Doctor fee is required.");
             }
 
             const input = {
@@ -332,19 +348,37 @@ export default function AdminContent() {
                 images: imageURLs,
             };
 
-            if (form.rating !== "") {
+            if (String(form.rating).trim() !== "") {
                 input.rating = Number(form.rating);
             } else {
                 delete input.rating;
             }
 
-            if (form.experience !== "") {
-                input.experience = Number(form.experience);
+            // Fix legacy experience values such as "12 Years".
+            const experience = normalizeExperience(form.experience);
+
+            if (experience !== "") {
+                input.experience = Number(experience);
             } else {
                 delete input.experience;
             }
 
-            if (!input.availability) delete input.availability;
+            // Keep legacy array availability when editing.
+            if (String(form.availability).trim()) {
+                const lines = String(form.availability)
+                    .split(/\r?\n/)
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+
+                if (Array.isArray(editing?.availability)) {
+                    input.availability = lines;
+                } else {
+                    input.availability = lines.join("\n");
+                }
+            } else {
+                delete input.availability;
+            }
+
             if (!input.image) delete input.image;
             if (!input.description) delete input.description;
 
@@ -452,6 +486,7 @@ export default function AdminContent() {
 
         link.href = url;
         link.download = "docappoint-reports.csv";
+
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -481,9 +516,7 @@ export default function AdminContent() {
                 <h1 className="text-2xl font-bold">
                     Admin access required
                 </h1>
-                <p>
-                    Your account does not have administrator permissions.
-                </p>
+                <p>Your account does not have administrator permissions.</p>
                 <Link className="btn mt-4" href="/dashboard">
                     Return to dashboard
                 </Link>
@@ -526,6 +559,7 @@ export default function AdminContent() {
                     : 5 + (index * 90) / (months.length - 1);
 
             const y = 95 - (item.count / maxMonth) * 85;
+
             return `${x},${y}`;
         })
         .join(" ");
@@ -545,8 +579,7 @@ export default function AdminContent() {
                 ? (item.count / totalStatus) * 100
                 : 0;
 
-            return `${colors[index % colors.length]
-                } ${start}% ${pieOffset}%`;
+            return `${colors[index % colors.length]} ${start}% ${pieOffset}%`;
         })
         .join(",");
 
@@ -569,9 +602,7 @@ export default function AdminContent() {
                         <button
                             key={tab}
                             type="button"
-                            className={`btn justify-start ${section === tab
-                                    ? "btn-primary"
-                                    : "btn-ghost"
+                            className={`btn justify-start ${section === tab ? "btn-primary" : "btn-ghost"
                                 }`}
                             onClick={() => navigate(tab)}
                         >
@@ -639,6 +670,7 @@ export default function AdminContent() {
                                                             stroke="currentColor"
                                                             strokeWidth="0.4"
                                                         />
+
                                                         <polyline
                                                             points={points}
                                                             fill="none"
@@ -737,6 +769,7 @@ export default function AdminContent() {
                                     <span className="label-text">
                                         Search doctor
                                     </span>
+
                                     <input
                                         className="input input-bordered"
                                         value={search}
@@ -778,56 +811,70 @@ export default function AdminContent() {
                                                 {key}
                                             </span>
 
-                                            <input
-                                                className="input input-bordered w-full"
-                                                type={
-                                                    [
-                                                        "fee",
-                                                        "rating",
-                                                        "experience",
-                                                    ].includes(key)
-                                                        ? "number"
-                                                        : key === "image"
-                                                            ? "url"
-                                                            : "text"
-                                                }
-                                                min={
-                                                    [
-                                                        "fee",
-                                                        "rating",
-                                                        "experience",
-                                                    ].includes(key)
-                                                        ? 0
-                                                        : undefined
-                                                }
-                                                max={
-                                                    key === "rating"
-                                                        ? 5
-                                                        : undefined
-                                                }
-                                                step={
-                                                    key === "rating"
-                                                        ? "0.1"
-                                                        : ["fee", "experience"].includes(
-                                                            key
-                                                        )
-                                                            ? "1"
+                                            {key === "availability" ? (
+                                                <textarea
+                                                    className="textarea textarea-bordered w-full min-h-24"
+                                                    value={form.availability ?? ""}
+                                                    onChange={(event) =>
+                                                        setForm((previous) => ({
+                                                            ...previous,
+                                                            availability: event.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder="One availability slot per line"
+                                                />
+                                            ) : (
+                                                <input
+                                                    className="input input-bordered w-full"
+                                                    type={
+                                                        [
+                                                            "fee",
+                                                            "rating",
+                                                            "experience",
+                                                        ].includes(key)
+                                                            ? "number"
+                                                            : key === "image"
+                                                                ? "url"
+                                                                : "text"
+                                                    }
+                                                    min={
+                                                        [
+                                                            "fee",
+                                                            "rating",
+                                                            "experience",
+                                                        ].includes(key)
+                                                            ? 0
                                                             : undefined
-                                                }
-                                                required={[
-                                                    "name",
-                                                    "specialty",
-                                                    "location",
-                                                    "fee",
-                                                ].includes(key)}
-                                                value={form[key] ?? ""}
-                                                onChange={(event) =>
-                                                    setForm((previous) => ({
-                                                        ...previous,
-                                                        [key]: event.target.value,
-                                                    }))
-                                                }
-                                            />
+                                                    }
+                                                    max={
+                                                        key === "rating"
+                                                            ? 5
+                                                            : key === "experience"
+                                                                ? 100
+                                                                : undefined
+                                                    }
+                                                    step={
+                                                        key === "rating"
+                                                            ? "0.1"
+                                                            : ["fee", "experience"].includes(key)
+                                                                ? "1"
+                                                                : undefined
+                                                    }
+                                                    required={[
+                                                        "name",
+                                                        "specialty",
+                                                        "location",
+                                                        "fee",
+                                                    ].includes(key)}
+                                                    value={form[key] ?? ""}
+                                                    onChange={(event) =>
+                                                        setForm((previous) => ({
+                                                            ...previous,
+                                                            [key]: event.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            )}
                                         </label>
                                     ))}
 
@@ -888,161 +935,153 @@ export default function AdminContent() {
                         </>
                     )}
 
-                    {["Doctors", "Users", "Messages"].includes(
-                        section
-                    ) && (
-                            <>
-                                <div className="overflow-x-auto bg-base-100 rounded-xl border border-base-300">
-                                    <table className="table table-zebra">
-                                        <thead>
-                                            <tr>
-                                                {(
-                                                    section === "Doctors"
+                    {["Doctors", "Users", "Messages"].includes(section) && (
+                        <>
+                            <div className="overflow-x-auto bg-base-100 rounded-xl border border-base-300">
+                                <table className="table table-zebra">
+                                    <thead>
+                                        <tr>
+                                            {(
+                                                section === "Doctors"
+                                                    ? [
+                                                        "Name",
+                                                        "Specialty",
+                                                        "Location",
+                                                        "Fee",
+                                                        "Actions",
+                                                    ]
+                                                    : section === "Users"
                                                         ? [
                                                             "Name",
-                                                            "Specialty",
-                                                            "Location",
-                                                            "Fee",
-                                                            "Actions",
+                                                            "Email",
+                                                            "Verified",
+                                                            "Joined",
                                                         ]
-                                                        : section === "Users"
-                                                            ? [
-                                                                "Name",
-                                                                "Email",
-                                                                "Verified",
-                                                                "Joined",
-                                                            ]
-                                                            : [
-                                                                "Name",
-                                                                "Email",
-                                                                "Subject",
-                                                                "Date",
-                                                            ]
-                                                ).map((label) => (
-                                                    <th key={label}>{label}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-
-                                        <tbody>
-                                            {(table?.items || []).map((row) => (
-                                                <tr key={row._id}>
-                                                    {section === "Doctors" ? (
-                                                        <>
-                                                            <td>{row.name}</td>
-                                                            <td>{row.specialty}</td>
-                                                            <td>{row.location}</td>
-                                                            <td>{row.fee}</td>
-                                                            <td>
-                                                                <div className="flex gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-xs"
-                                                                        onClick={() =>
-                                                                            openEdit(row)
-                                                                        }
-                                                                    >
-                                                                        Edit
-                                                                    </button>
-
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-xs btn-error"
-                                                                        onClick={() =>
-                                                                            remove(row.id)
-                                                                        }
-                                                                        disabled={busy}
-                                                                    >
-                                                                        Delete
-                                                                    </button>
-
-                                                                    <Link
-                                                                        className="btn btn-xs"
-                                                                        href={`/doctor/${row.id}`}
-                                                                    >
-                                                                        View
-                                                                    </Link>
-                                                                </div>
-                                                            </td>
-                                                        </>
-                                                    ) : section === "Users" ? (
-                                                        <>
-                                                            <td>{row.name}</td>
-                                                            <td>{row.email}</td>
-                                                            <td>
-                                                                {row.emailVerified
-                                                                    ? "Yes"
-                                                                    : "No"}
-                                                            </td>
-                                                            <td>
-                                                                {row.createdAt
-                                                                    ? new Date(
-                                                                        row.createdAt
-                                                                    ).toLocaleDateString()
-                                                                    : "—"}
-                                                            </td>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <td>{row.name}</td>
-                                                            <td>{row.email}</td>
-                                                            <td>{row.subject}</td>
-                                                            <td>
-                                                                {row.createdAt
-                                                                    ? new Date(
-                                                                        row.createdAt
-                                                                    ).toLocaleDateString()
-                                                                    : "—"}
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
+                                                        : [
+                                                            "Name",
+                                                            "Email",
+                                                            "Subject",
+                                                            "Date",
+                                                        ]
+                                            ).map((label) => (
+                                                <th key={label}>{label}</th>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </tr>
+                                    </thead>
 
-                                    {busy && <p className="p-4">Loading…</p>}
+                                    <tbody>
+                                        {(table?.items || []).map((row) => (
+                                            <tr key={row._id}>
+                                                {section === "Doctors" ? (
+                                                    <>
+                                                        <td>{row.name}</td>
+                                                        <td>{row.specialty}</td>
+                                                        <td>{row.location}</td>
+                                                        <td>{row.fee}</td>
 
-                                    {!busy &&
-                                        table?.items?.length === 0 && (
-                                            <p className="p-4">
-                                                No records found.
-                                            </p>
-                                        )}
-                                </div>
+                                                        <td>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-xs"
+                                                                    onClick={() => openEdit(row)}
+                                                                >
+                                                                    Edit
+                                                                </button>
 
-                                <div className="flex justify-between items-center">
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        disabled={page <= 1 || busy}
-                                        onClick={() =>
-                                            setPage((previous) => previous - 1)
-                                        }
-                                    >
-                                        Previous
-                                    </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-xs btn-error"
+                                                                    onClick={() => remove(row.id)}
+                                                                    disabled={busy}
+                                                                >
+                                                                    Delete
+                                                                </button>
 
-                                    <span>
-                                        Page {page} of{" "}
-                                        {Math.max(1, table?.pages || 1)}
-                                    </span>
+                                                                <Link
+                                                                    className="btn btn-xs"
+                                                                    href={`/doctor/${row.id}`}
+                                                                >
+                                                                    View
+                                                                </Link>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                ) : section === "Users" ? (
+                                                    <>
+                                                        <td>{row.name}</td>
+                                                        <td>{row.email}</td>
+                                                        <td>
+                                                            {row.emailVerified ? "Yes" : "No"}
+                                                        </td>
+                                                        <td>
+                                                            {row.createdAt
+                                                                ? new Date(
+                                                                    row.createdAt
+                                                                ).toLocaleDateString()
+                                                                : "—"}
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td>{row.name}</td>
+                                                        <td>{row.email}</td>
+                                                        <td>{row.subject}</td>
+                                                        <td>
+                                                            {row.createdAt
+                                                                ? new Date(
+                                                                    row.createdAt
+                                                                ).toLocaleDateString()
+                                                                : "—"}
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
 
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        disabled={
-                                            page >= (table?.pages || 1) || busy
-                                        }
-                                        onClick={() =>
-                                            setPage((previous) => previous + 1)
-                                        }
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                                {busy && (
+                                    <p className="p-4">Loading…</p>
+                                )}
+
+                                {!busy && table?.items?.length === 0 && (
+                                    <p className="p-4">No records found.</p>
+                                )}
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    disabled={page <= 1 || busy}
+                                    onClick={() =>
+                                        setPage((previous) => previous - 1)
+                                    }
+                                >
+                                    Previous
+                                </button>
+
+                                <span>
+                                    Page {page} of{" "}
+                                    {Math.max(1, table?.pages || 1)}
+                                </span>
+
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    disabled={
+                                        page >= (table?.pages || 1) || busy
+                                    }
+                                    onClick={() =>
+                                        setPage((previous) => previous + 1)
+                                    }
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                     {section === "Reports" && (
                         <div className="space-y-5">
@@ -1149,8 +1188,7 @@ export default function AdminContent() {
 
                                             {status.length === 0 ? (
                                                 <p>
-                                                    No appointment status data
-                                                    available.
+                                                    No appointment status data available.
                                                 </p>
                                             ) : (
                                                 <div className="overflow-x-auto">
@@ -1162,6 +1200,7 @@ export default function AdminContent() {
                                                                 <th>Percentage</th>
                                                             </tr>
                                                         </thead>
+
                                                         <tbody>
                                                             {status.map((item) => (
                                                                 <tr key={item.name}>
