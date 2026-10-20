@@ -60,6 +60,7 @@ function ReportBar({ name, count, max }) {
                 <span>{name}</span>
                 <strong>{count}</strong>
             </div>
+
             <div className="h-5 overflow-hidden rounded bg-base-300">
                 <div
                     className="h-full bg-primary"
@@ -78,27 +79,45 @@ function AdminSettings({ user, onNavigate }) {
             <h2 className="text-2xl font-bold">Admin Settings</h2>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">Account Information</h3>
-                <p><strong>Name:</strong> {user?.name || "Not provided"}</p>
+                <h3 className="text-lg font-semibold">
+                    Account Information
+                </h3>
+
+                <p>
+                    <strong>Name:</strong> {user?.name || "Not provided"}
+                </p>
+
                 <p className="break-all">
                     <strong>Email:</strong> {user?.email || "Not available"}
                 </p>
+
                 <Link href="/dashboard" className="btn btn-primary">
                     Edit Profile
                 </Link>
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">Account Security</h3>
+                <h3 className="text-lg font-semibold">
+                    Account Security
+                </h3>
+
                 <p>Reset your password using your registered email.</p>
-                <Link href="/forgot-password" className="btn btn-outline">
+
+                <Link
+                    href="/forgot-password"
+                    className="btn btn-outline"
+                >
                     Reset Password
                 </Link>
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">Doctor Management</h3>
+                <h3 className="text-lg font-semibold">
+                    Doctor Management
+                </h3>
+
                 <p>Add, edit and manage doctor information.</p>
+
                 <button
                     type="button"
                     className="btn btn-primary"
@@ -109,8 +128,12 @@ function AdminSettings({ user, onNavigate }) {
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">Reports</h3>
+                <h3 className="text-lg font-semibold">
+                    Reports
+                </h3>
+
                 <p>View live reports and export data as CSV.</p>
+
                 <button
                     type="button"
                     className="btn btn-outline"
@@ -121,8 +144,12 @@ function AdminSettings({ user, onNavigate }) {
             </div>
 
             <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">Messages</h3>
+                <h3 className="text-lg font-semibold">
+                    Messages
+                </h3>
+
                 <p>View messages received through the Contact form.</p>
+
                 <button
                     type="button"
                     className="btn btn-outline"
@@ -142,12 +169,23 @@ export default function AdminContent() {
     const [section, setSection] = useState("Overview");
     const [overview, setOverview] = useState(null);
     const [table, setTable] = useState(null);
+
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
+
+    // Backend sorting
+    const [doctorSortBy, setDoctorSortBy] = useState("name");
+    const [doctorOrder, setDoctorOrder] = useState("asc");
+
+    const [userSortBy, setUserSortBy] = useState("createdAt");
+    const [userOrder, setUserOrder] = useState("desc");
+
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ ...empty });
+
     const [busy, setBusy] = useState(false);
     const [reportBusy, setReportBusy] = useState(false);
+
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -187,7 +225,10 @@ export default function AdminContent() {
     }
 
     useEffect(() => {
-        if (!session?.user) return;
+        if (!session?.user) {
+            setRole(null);
+            return;
+        }
 
         request("/api/me/role")
             .then((value) => setRole(value.role))
@@ -212,6 +253,7 @@ export default function AdminContent() {
         };
     }, [role, success]);
 
+    // Fetch sorted and paginated data from backend
     useEffect(() => {
         if (
             role !== "admin" ||
@@ -234,11 +276,21 @@ export default function AdminContent() {
             page: String(page),
         });
 
-        if (section === "Doctors" && search) {
-            query.set("search", search);
+        if (section === "Doctors") {
+            if (search.trim()) {
+                query.set("search", search.trim());
+            }
+
+            query.set("sortBy", doctorSortBy);
+            query.set("order", doctorOrder);
         }
 
-        request(`/api/admin/${endpoint}?${query}`)
+        if (section === "Users") {
+            query.set("sortBy", userSortBy);
+            query.set("order", userOrder);
+        }
+
+        request(`/api/admin/${endpoint}?${query.toString()}`)
             .then((data) => {
                 if (active) setTable(data);
             })
@@ -252,7 +304,17 @@ export default function AdminContent() {
         return () => {
             active = false;
         };
-    }, [role, section, page, search, success]);
+    }, [
+        role,
+        section,
+        page,
+        search,
+        doctorSortBy,
+        doctorOrder,
+        userSortBy,
+        userOrder,
+        success,
+    ]);
 
     useEffect(() => {
         if (editing !== null && section === "Doctors") {
@@ -314,6 +376,7 @@ export default function AdminContent() {
 
     async function save(event) {
         event.preventDefault();
+
         setBusy(true);
         setError("");
         setSuccess("");
@@ -332,7 +395,11 @@ export default function AdminContent() {
                 throw new Error("Maximum 10 gallery images allowed.");
             }
 
-            if (imageURLs.some((url) => !/^https:\/\/\S+$/i.test(url))) {
+            if (
+                imageURLs.some(
+                    (url) => !/^https:\/\/\S+$/i.test(url)
+                )
+            ) {
                 throw new Error(
                     "Each gallery image must have a valid HTTPS URL."
                 );
@@ -354,7 +421,6 @@ export default function AdminContent() {
                 delete input.rating;
             }
 
-            // Fix legacy experience values such as "12 Years".
             const experience = normalizeExperience(form.experience);
 
             if (experience !== "") {
@@ -363,7 +429,6 @@ export default function AdminContent() {
                 delete input.experience;
             }
 
-            // Keep legacy array availability when editing.
             if (String(form.availability).trim()) {
                 const lines = String(form.availability)
                     .split(/\r?\n/)
@@ -445,16 +510,19 @@ export default function AdminContent() {
             ["Summary", "Appointments", overview.appointments],
             ["Summary", "Users", overview.users],
             ["Summary", "Messages", overview.contacts],
+
             ...months.map((item) => [
                 "Monthly Appointments",
                 item._id,
                 item.count,
             ]),
+
             ...specialties.map((item) => [
                 "Doctor Specialties",
                 item._id,
                 item.count,
             ]),
+
             ...statuses.map((item) => [
                 "Appointment Status",
                 item._id,
@@ -467,6 +535,7 @@ export default function AdminContent() {
                 row
                     .map((cell) => {
                         const value = String(cell ?? "");
+
                         const safe = /^\s*[=+\-@]/.test(value)
                             ? `'${value}`
                             : value;
@@ -516,8 +585,15 @@ export default function AdminContent() {
                 <h1 className="text-2xl font-bold">
                     Admin access required
                 </h1>
-                <p>Your account does not have administrator permissions.</p>
-                <Link className="btn mt-4" href="/dashboard">
+
+                <p>
+                    Your account does not have administrator permissions.
+                </p>
+
+                <Link
+                    className="btn mt-4"
+                    href="/dashboard"
+                >
                     Return to dashboard
                 </Link>
             </section>
@@ -579,7 +655,8 @@ export default function AdminContent() {
                 ? (item.count / totalStatus) * 100
                 : 0;
 
-            return `${colors[index % colors.length]} ${start}% ${pieOffset}%`;
+            return `${colors[index % colors.length]
+                } ${start}% ${pieOffset}%`;
         })
         .join(",");
 
@@ -602,7 +679,9 @@ export default function AdminContent() {
                         <button
                             key={tab}
                             type="button"
-                            className={`btn justify-start ${section === tab ? "btn-primary" : "btn-ghost"
+                            className={`btn justify-start ${section === tab
+                                    ? "btn-primary"
+                                    : "btn-ghost"
                                 }`}
                             onClick={() => navigate(tab)}
                         >
@@ -613,13 +692,19 @@ export default function AdminContent() {
 
                 <main className="min-w-0 space-y-6">
                     {error && (
-                        <p role="alert" className="alert alert-error">
+                        <p
+                            role="alert"
+                            className="alert alert-error"
+                        >
                             {error}
                         </p>
                     )}
 
                     {success && (
-                        <p role="status" className="alert alert-success">
+                        <p
+                            role="status"
+                            className="alert alert-success"
+                        >
                             {success}
                         </p>
                     )}
@@ -740,13 +825,12 @@ export default function AdminContent() {
                                                                         className="inline-block w-3 h-3 mr-2"
                                                                         style={{
                                                                             background:
-                                                                                colors[
-                                                                                index % colors.length
-                                                                                ],
+                                                                                colors[index % colors.length],
                                                                         }}
                                                                     />
                                                                     {item.name}
                                                                 </span>
+
                                                                 <span>{item.count}</span>
                                                             </div>
                                                         ))}
@@ -932,7 +1016,100 @@ export default function AdminContent() {
                                     </div>
                                 </form>
                             )}
+
+                            {/* Doctor sorting controls */}
+                            <div className="bg-base-200 rounded-xl p-4 flex flex-wrap items-end gap-3">
+                                <label className="form-control flex-1 min-w-36">
+                                    <span className="label-text">
+                                        Sort Doctors By
+                                    </span>
+
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={doctorSortBy}
+                                        onChange={(event) => {
+                                            setDoctorSortBy(event.target.value);
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <option value="name">Name</option>
+                                        <option value="specialty">Specialty</option>
+                                        <option value="location">Location</option>
+                                        <option value="fee">Consultation Fee</option>
+                                        <option value="rating">Rating</option>
+                                    </select>
+                                </label>
+
+                                <label className="form-control flex-1 min-w-36">
+                                    <span className="label-text">
+                                        Order
+                                    </span>
+
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={doctorOrder}
+                                        onChange={(event) => {
+                                            setDoctorOrder(event.target.value);
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <option value="asc">
+                                            Ascending (Low to High / A to Z)
+                                        </option>
+                                        <option value="desc">
+                                            Descending (High to Low / Z to A)
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
                         </>
+                    )}
+
+                    {section === "Users" && (
+                        <div className="bg-base-200 rounded-xl p-4 flex flex-wrap items-end gap-3">
+                            <label className="form-control flex-1 min-w-36">
+                                <span className="label-text">
+                                    Sort Users By
+                                </span>
+
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={userSortBy}
+                                    onChange={(event) => {
+                                        setUserSortBy(event.target.value);
+                                        setPage(1);
+                                    }}
+                                >
+                                    <option value="createdAt">
+                                        Registration Date
+                                    </option>
+                                    <option value="name">Name</option>
+                                    <option value="email">Email</option>
+                                </select>
+                            </label>
+
+                            <label className="form-control flex-1 min-w-36">
+                                <span className="label-text">
+                                    Order
+                                </span>
+
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={userOrder}
+                                    onChange={(event) => {
+                                        setUserOrder(event.target.value);
+                                        setPage(1);
+                                    }}
+                                >
+                                    <option value="desc">
+                                        Descending (Newest / Z to A)
+                                    </option>
+                                    <option value="asc">
+                                        Ascending (Oldest / A to Z)
+                                    </option>
+                                </select>
+                            </label>
+                        </div>
                     )}
 
                     {["Doctors", "Users", "Messages"].includes(section) && (
@@ -1012,7 +1189,9 @@ export default function AdminContent() {
                                                         <td>{row.name}</td>
                                                         <td>{row.email}</td>
                                                         <td>
-                                                            {row.emailVerified ? "Yes" : "No"}
+                                                            {row.emailVerified
+                                                                ? "Yes"
+                                                                : "No"}
                                                         </td>
                                                         <td>
                                                             {row.createdAt
@@ -1046,7 +1225,9 @@ export default function AdminContent() {
                                 )}
 
                                 {!busy && table?.items?.length === 0 && (
-                                    <p className="p-4">No records found.</p>
+                                    <p className="p-4">
+                                        No records found.
+                                    </p>
                                 )}
                             </div>
 
