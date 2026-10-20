@@ -6,9 +6,7 @@ import Link from "next/link";
 import { useSession } from "../lib/auth-client";
 import { API_URL } from "../lib/api";
 
-const colors = ["#0d9488", "#2563eb", "#d97706", "#7c3aed"];
-
-const empty = {
+const emptyDoctor = {
     name: "",
     specialty: "",
     location: "",
@@ -21,7 +19,7 @@ const empty = {
     availability: "",
 };
 
-const doctorFields = [
+const fields = [
     "name",
     "specialty",
     "location",
@@ -33,39 +31,109 @@ const doctorFields = [
     "availability",
 ];
 
-function normalizeExperience(input) {
-    if (input === null || input === undefined || input === "") {
-        return "";
+function isHttpsURL(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === "https:" && Boolean(url.hostname);
+    } catch {
+        return false;
     }
+}
 
-    const match = String(input)
+function normalizeExperience(value) {
+    const match = String(value ?? "")
         .trim()
         .match(/^(\d+(?:\.\d+)?)\s*(?:years?|yrs?)?$/i);
 
     return match ? match[1] : "";
 }
 
-function normalizeAvailability(input) {
-    if (Array.isArray(input)) {
-        return input.join("\n");
+function validateDoctor(form) {
+    const errors = {};
+
+    for (const key of ["name", "specialty", "location"]) {
+        const value = String(form[key] ?? "").trim();
+
+        if (!value) {
+            errors[key] = `${key} is required.`;
+        } else if (value.length < 2) {
+            errors[key] = "Enter at least 2 characters.";
+        } else if (value.length > 120) {
+            errors[key] = "Maximum 120 characters allowed.";
+        }
     }
 
-    return typeof input === "string" ? input : "";
+    const fee = String(form.fee ?? "").trim();
+
+    if (!fee) {
+        errors.fee = "Consultation fee is required.";
+    } else if (
+        !Number.isFinite(Number(fee)) ||
+        !Number.isInteger(Number(fee)) ||
+        Number(fee) < 0
+    ) {
+        errors.fee = "Enter a valid non-negative whole number.";
+    }
+
+    const rating = String(form.rating ?? "").trim();
+
+    if (
+        rating &&
+        (!Number.isFinite(Number(rating)) ||
+            Number(rating) < 0 ||
+            Number(rating) > 5)
+    ) {
+        errors.rating = "Rating must be between 0 and 5.";
+    }
+
+    const experience = String(form.experience ?? "").trim();
+
+    if (
+        experience &&
+        (!/^\d+(?:\.\d+)?$/.test(experience) ||
+            Number(experience) > 100)
+    ) {
+        errors.experience =
+            "Experience must be between 0 and 100.";
+    }
+
+    const mainImage = String(form.image ?? "").trim();
+
+    if (mainImage && !isHttpsURL(mainImage)) {
+        errors.image = "Enter a valid HTTPS image URL.";
+    }
+
+    const images = String(form.images ?? "")
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+    if (images.length > 10) {
+        errors.images = "Maximum 10 gallery images allowed.";
+    } else if (images.some((url) => !isHttpsURL(url))) {
+        errors.images = "Every image must have a valid HTTPS URL.";
+    }
+
+    if (String(form.description ?? "").length > 2000) {
+        errors.description = "Maximum 2000 characters allowed.";
+    }
+
+    return errors;
 }
 
-function ReportBar({ name, count, max }) {
+function Bar({ label, count, max }) {
     return (
-        <div className="mb-4">
-            <div className="mb-1 flex justify-between gap-3 text-sm">
-                <span>{name}</span>
+        <div className="space-y-1 mb-3">
+            <div className="flex justify-between gap-3 text-sm">
+                <span>{label || "Unknown"}</span>
                 <strong>{count}</strong>
             </div>
 
-            <div className="h-5 overflow-hidden rounded bg-base-300">
+            <div className="h-4 rounded bg-base-300 overflow-hidden">
                 <div
                     className="h-full bg-primary"
                     style={{
-                        width: `${(count / Math.max(1, max)) * 100}%`,
+                        width: `${(Number(count) / Math.max(1, max)) * 100}%`,
                     }}
                 />
             </div>
@@ -73,35 +141,242 @@ function ReportBar({ name, count, max }) {
     );
 }
 
-function AdminSettings({ user, onNavigate }) {
+function StatCards({ overview }) {
+    return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+                ["Doctors", overview.doctors],
+                ["Appointments", overview.appointments],
+                ["Users", overview.users],
+                ["Messages", overview.contacts],
+            ].map(([label, value]) => (
+                <div
+                    key={label}
+                    className="rounded-xl bg-base-200 p-5"
+                >
+                    <p>{label}</p>
+                    <strong className="text-3xl">{value ?? 0}</strong>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function ReportContent({ overview, onRefresh, onExport, loading }) {
+    if (!overview) {
+        return <p>Loading reports...</p>;
+    }
+
+    const months = overview.byMonth || [];
+    const specialties = overview.bySpecialty || [];
+    const statuses = overview.byStatus || [];
+
+    const maxMonth = Math.max(
+        1,
+        ...months.map((item) => Number(item.count) || 0)
+    );
+
+    const maxSpecialty = Math.max(
+        1,
+        ...specialties.map((item) => Number(item.count) || 0)
+    );
+
+    const totalStatus = statuses.reduce(
+        (sum, item) => sum + Number(item.count || 0),
+        0
+    );
+
+    const colors = ["#0d9488", "#2563eb", "#d97706", "#7c3aed"];
+
+    let offset = 0;
+
+    const pieStops = statuses
+        .map((item, index) => {
+            const start = offset;
+            offset += totalStatus
+                ? (Number(item.count || 0) / totalStatus) * 100
+                : 0;
+
+            return `${colors[index % colors.length]} ${start}% ${offset}%`;
+        })
+        .join(", ");
+
+    const points = months
+        .map((item, index) => {
+            const x =
+                months.length === 1
+                    ? 50
+                    : 5 + (index * 90) / (months.length - 1);
+
+            const y =
+                95 - (Number(item.count || 0) / maxMonth) * 85;
+
+            return `${x},${y}`;
+        })
+        .join(" ");
+
+    return (
+        <div className="space-y-5">
+            <div className="flex flex-wrap justify-between items-center gap-3">
+                <h2 className="text-2xl font-bold">Live Reports</h2>
+
+                <div className="flex gap-2">
+                    <button
+                        className="btn btn-outline"
+                        onClick={onRefresh}
+                        disabled={loading}
+                        type="button"
+                    >
+                        {loading ? "Refreshing..." : "Refresh"}
+                    </button>
+
+                    <button
+                        className="btn btn-primary"
+                        onClick={onExport}
+                        disabled={loading}
+                        type="button"
+                    >
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <StatCards overview={overview} />
+
+            <div className="grid md:grid-cols-2 gap-5">
+                <section className="bg-base-200 rounded-xl p-5">
+                    <h3 className="font-bold mb-4">
+                        Monthly Appointments
+                    </h3>
+
+                    {months.length ? (
+                        <>
+                            <svg
+                                viewBox="0 0 100 100"
+                                width="100%"
+                                height="200"
+                                role="img"
+                                aria-label="Monthly appointment line chart"
+                            >
+                                <path
+                                    d="M5 95 H95"
+                                    stroke="currentColor"
+                                    strokeWidth="0.5"
+                                    fill="none"
+                                />
+
+                                <polyline
+                                    points={points}
+                                    fill="none"
+                                    stroke="#0d9488"
+                                    strokeWidth="1.7"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                            </svg>
+
+                            <div className="text-sm">
+                                {months.map((item) => (
+                                    <Bar
+                                        key={item._id}
+                                        label={item._id}
+                                        count={item.count}
+                                        max={maxMonth}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <p>No monthly data available.</p>
+                    )}
+                </section>
+
+                <section className="bg-base-200 rounded-xl p-5">
+                    <h3 className="font-bold mb-4">
+                        Doctors by Specialty
+                    </h3>
+
+                    {specialties.length ? (
+                        specialties.map((item) => (
+                            <Bar
+                                key={item._id}
+                                label={item._id}
+                                count={item.count}
+                                max={maxSpecialty}
+                            />
+                        ))
+                    ) : (
+                        <p>No specialty data available.</p>
+                    )}
+                </section>
+
+                <section className="bg-base-200 rounded-xl p-5">
+                    <h3 className="font-bold mb-4">
+                        Appointment Status
+                    </h3>
+
+                    {totalStatus > 0 ? (
+                        <>
+                            <div
+                                role="img"
+                                aria-label="Appointment status pie chart"
+                                className="w-40 h-40 rounded-full mx-auto mb-5"
+                                style={{
+                                    background: `conic-gradient(${pieStops})`,
+                                }}
+                            />
+
+                            {statuses.map((item, index) => (
+                                <div
+                                    key={item._id}
+                                    className="flex justify-between mb-2 text-sm"
+                                >
+                                    <span>
+                                        <span
+                                            className="inline-block w-3 h-3 mr-2"
+                                            style={{
+                                                background:
+                                                    colors[index % colors.length],
+                                            }}
+                                        />
+                                        {item._id}
+                                    </span>
+
+                                    <strong>{item.count}</strong>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <p>No appointment status data available.</p>
+                    )}
+                </section>
+            </div>
+        </div>
+    );
+}
+
+function SettingsContent({ user, navigate }) {
     return (
         <section className="space-y-5">
-            <h2 className="text-2xl font-bold">Admin Settings</h2>
+            <h2 className="text-2xl font-bold">
+                Admin Settings
+            </h2>
 
-            <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
+            <div className="bg-base-200 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-lg">
                     Account Information
                 </h3>
-
-                <p>
-                    <strong>Name:</strong> {user?.name || "Not provided"}
-                </p>
-
-                <p className="break-all">
-                    <strong>Email:</strong> {user?.email || "Not available"}
-                </p>
+                <p>Name: {user?.name || "Not provided"}</p>
+                <p>Email: {user?.email || "Not available"}</p>
 
                 <Link href="/dashboard" className="btn btn-primary">
                     Edit Profile
                 </Link>
             </div>
 
-            <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
+            <div className="bg-base-200 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-lg">
                     Account Security
                 </h3>
-
-                <p>Reset your password using your registered email.</p>
 
                 <Link
                     href="/forgot-password"
@@ -111,49 +386,43 @@ function AdminSettings({ user, onNavigate }) {
                 </Link>
             </div>
 
-            <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
+            <div className="bg-base-200 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-lg">
                     Doctor Management
                 </h3>
-
-                <p>Add, edit and manage doctor information.</p>
 
                 <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => onNavigate("Doctors")}
+                    onClick={() => navigate("Doctors")}
                 >
                     Manage Doctors
                 </button>
             </div>
 
-            <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
+            <div className="bg-base-200 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-lg">
                     Reports
                 </h3>
-
-                <p>View live reports and export data as CSV.</p>
 
                 <button
                     type="button"
                     className="btn btn-outline"
-                    onClick={() => onNavigate("Reports")}
+                    onClick={() => navigate("Reports")}
                 >
                     Open Reports
                 </button>
             </div>
 
-            <div className="rounded-xl bg-base-200 p-5 space-y-3">
-                <h3 className="text-lg font-semibold">
+            <div className="bg-base-200 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-lg">
                     Messages
                 </h3>
-
-                <p>View messages received through the Contact form.</p>
 
                 <button
                     type="button"
                     className="btn btn-outline"
-                    onClick={() => onNavigate("Messages")}
+                    onClick={() => navigate("Messages")}
                 >
                     View Messages
                 </button>
@@ -173,7 +442,6 @@ export default function AdminContent() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
 
-    // Backend sorting
     const [doctorSortBy, setDoctorSortBy] = useState("name");
     const [doctorOrder, setDoctorOrder] = useState("asc");
 
@@ -181,7 +449,8 @@ export default function AdminContent() {
     const [userOrder, setUserOrder] = useState("desc");
 
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ ...empty });
+    const [form, setForm] = useState({ ...emptyDoctor });
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const [busy, setBusy] = useState(false);
     const [reportBusy, setReportBusy] = useState(false);
@@ -201,27 +470,15 @@ export default function AdminContent() {
             },
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw new Error(data.message || "Request failed");
+            throw new Error(
+                data.message || `Request failed (${response.status})`
+            );
         }
 
         return data;
-    }
-
-    async function loadOverview() {
-        setReportBusy(true);
-        setError("");
-
-        try {
-            const data = await request("/api/admin/overview");
-            setOverview(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setReportBusy(false);
-        }
     }
 
     useEffect(() => {
@@ -230,9 +487,19 @@ export default function AdminContent() {
             return;
         }
 
+        let active = true;
+
         request("/api/me/role")
-            .then((value) => setRole(value.role))
-            .catch(() => setRole("user"));
+            .then((value) => {
+                if (active) setRole(value.role);
+            })
+            .catch(() => {
+                if (active) setRole("user");
+            });
+
+        return () => {
+            active = false;
+        };
     }, [session?.user?.id]);
 
     useEffect(() => {
@@ -253,11 +520,10 @@ export default function AdminContent() {
         };
     }, [role, success]);
 
-    // Fetch sorted and paginated data from backend
     useEffect(() => {
         if (
             role !== "admin" ||
-            ["Overview", "Settings", "Reports"].includes(section)
+            ["Overview", "Reports", "Settings"].includes(section)
         ) {
             return;
         }
@@ -333,10 +599,26 @@ export default function AdminContent() {
         setError("");
         setSuccess("");
         setEditing(null);
+        setFieldErrors({});
+    }
+
+    function updateField(key, value) {
+        setForm((previous) => ({
+            ...previous,
+            [key]: value,
+        }));
+
+        setFieldErrors((previous) => ({
+            ...previous,
+            [key]: undefined,
+        }));
+
+        setError("");
     }
 
     function openAdd() {
-        setForm({ ...empty });
+        setForm({ ...emptyDoctor });
+        setFieldErrors({});
         setEditing({});
         setError("");
         setSuccess("");
@@ -344,102 +626,94 @@ export default function AdminContent() {
 
     function openEdit(doctor) {
         const values = Object.fromEntries(
-            Object.keys(empty).map((key) => {
-                let current = doctor[key] ?? "";
+            Object.keys(emptyDoctor).map((key) => {
+                let value = doctor[key] ?? "";
 
                 if (key === "images") {
-                    current = Array.isArray(doctor.images)
+                    value = Array.isArray(doctor.images)
                         ? doctor.images.join("\n")
                         : "";
-                } else if (key === "availability") {
-                    current = normalizeAvailability(doctor.availability);
-                } else if (key === "experience") {
-                    current = normalizeExperience(doctor.experience);
                 }
 
-                return [key, current];
+                if (key === "availability") {
+                    value = Array.isArray(doctor.availability)
+                        ? doctor.availability.join("\n")
+                        : doctor.availability ?? "";
+                }
+
+                if (key === "experience") {
+                    value = normalizeExperience(doctor.experience);
+                }
+
+                return [key, value];
             })
         );
 
         setForm(values);
+        setFieldErrors({});
         setEditing(doctor);
         setError("");
         setSuccess("");
-
-        requestAnimationFrame(() => {
-            formRef.current?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-            });
-        });
     }
 
     async function save(event) {
         event.preventDefault();
+
+        if (busy) return;
+
+        const errors = validateDoctor(form);
+        setFieldErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setError("Please correct the highlighted fields.");
+            setSuccess("");
+            return;
+        }
 
         setBusy(true);
         setError("");
         setSuccess("");
 
         try {
-            const imageURLs = [
+            const images = [
                 ...new Set(
-                    String(form.images || "")
+                    String(form.images ?? "")
                         .split(/\r?\n/)
-                        .map((url) => url.trim())
+                        .map((value) => value.trim())
                         .filter(Boolean)
                 ),
             ];
 
-            if (imageURLs.length > 10) {
-                throw new Error("Maximum 10 gallery images allowed.");
-            }
-
-            if (
-                imageURLs.some(
-                    (url) => !/^https:\/\/\S+$/i.test(url)
-                )
-            ) {
-                throw new Error(
-                    "Each gallery image must have a valid HTTPS URL."
-                );
-            }
-
-            if (String(form.fee).trim() === "") {
-                throw new Error("Doctor fee is required.");
-            }
-
             const input = {
                 ...form,
+                name: String(form.name).trim(),
+                specialty: String(form.specialty).trim(),
+                location: String(form.location).trim(),
                 fee: Number(form.fee),
-                images: imageURLs,
+                images,
             };
 
-            if (String(form.rating).trim() !== "") {
+            if (String(form.rating).trim()) {
                 input.rating = Number(form.rating);
             } else {
                 delete input.rating;
             }
 
-            const experience = normalizeExperience(form.experience);
-
-            if (experience !== "") {
-                input.experience = Number(experience);
+            if (String(form.experience).trim()) {
+                input.experience = Number(form.experience);
             } else {
                 delete input.experience;
             }
 
-            if (String(form.availability).trim()) {
-                const lines = String(form.availability)
-                    .split(/\r?\n/)
-                    .map((item) => item.trim())
-                    .filter(Boolean);
+            const slots = String(form.availability ?? "")
+                .split(/\r?\n/)
+                .map((item) => item.trim())
+                .filter(Boolean);
 
-                if (Array.isArray(editing?.availability)) {
-                    input.availability = lines;
-                } else {
-                    input.availability = lines.join("\n");
-                }
+            if (slots.length) {
+                input.availability = Array.isArray(editing?.availability)
+                    ? slots
+                    : slots.join("\n");
             } else {
                 delete input.availability;
             }
@@ -460,8 +734,8 @@ export default function AdminContent() {
             );
 
             setEditing(null);
-            setForm({ ...empty });
-
+            setForm({ ...emptyDoctor });
+            setFieldErrors({});
             setSuccess(
                 isEdit
                     ? "Doctor updated successfully!"
@@ -497,12 +771,22 @@ export default function AdminContent() {
         }
     }
 
+    async function refreshReports() {
+        setReportBusy(true);
+        setError("");
+
+        try {
+            const data = await request("/api/admin/overview");
+            setOverview(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setReportBusy(false);
+        }
+    }
+
     function exportCSV() {
         if (!overview) return;
-
-        const months = overview.byMonth || [];
-        const specialties = overview.bySpecialty || [];
-        const statuses = overview.byStatus || [];
 
         const rows = [
             ["Report", "Category", "Count"],
@@ -510,20 +794,17 @@ export default function AdminContent() {
             ["Summary", "Appointments", overview.appointments],
             ["Summary", "Users", overview.users],
             ["Summary", "Messages", overview.contacts],
-
-            ...months.map((item) => [
+            ...(overview.byMonth || []).map((item) => [
                 "Monthly Appointments",
                 item._id,
                 item.count,
             ]),
-
-            ...specialties.map((item) => [
+            ...(overview.bySpecialty || []).map((item) => [
                 "Doctor Specialties",
                 item._id,
                 item.count,
             ]),
-
-            ...statuses.map((item) => [
+            ...(overview.byStatus || []).map((item) => [
                 "Appointment Status",
                 item._id,
                 item.count,
@@ -535,7 +816,6 @@ export default function AdminContent() {
                 row
                     .map((cell) => {
                         const value = String(cell ?? "");
-
                         const safe = /^\s*[=+\-@]/.test(value)
                             ? `'${value}`
                             : value;
@@ -564,14 +844,14 @@ export default function AdminContent() {
     }
 
     if (isPending || (session?.user && role === null)) {
-        return <p className="p-8">Checking access…</p>;
+        return <p className="p-8">Checking access...</p>;
     }
 
     if (!session?.user) {
         return (
             <p className="p-8">
                 Please{" "}
-                <Link className="link" href="/login">
+                <Link href="/login" className="link">
                     sign in
                 </Link>{" "}
                 to continue.
@@ -590,75 +870,12 @@ export default function AdminContent() {
                     Your account does not have administrator permissions.
                 </p>
 
-                <Link
-                    className="btn mt-4"
-                    href="/dashboard"
-                >
+                <Link href="/dashboard" className="btn mt-4">
                     Return to dashboard
                 </Link>
             </section>
         );
     }
-
-    const months = (overview?.byMonth || []).map((item) => ({
-        name: item._id,
-        count: item.count,
-    }));
-
-    const specialty = (overview?.bySpecialty || []).map(
-        (item) => ({
-            name: item._id,
-            count: item.count,
-        })
-    );
-
-    const status = (overview?.byStatus || []).map((item) => ({
-        name: item._id,
-        count: item.count,
-    }));
-
-    const maxMonth = Math.max(
-        1,
-        ...months.map((item) => item.count)
-    );
-
-    const maxSpecialty = Math.max(
-        1,
-        ...specialty.map((item) => item.count)
-    );
-
-    const points = months
-        .map((item, index) => {
-            const x =
-                months.length === 1
-                    ? 50
-                    : 5 + (index * 90) / (months.length - 1);
-
-            const y = 95 - (item.count / maxMonth) * 85;
-
-            return `${x},${y}`;
-        })
-        .join(" ");
-
-    const totalStatus = status.reduce(
-        (sum, item) => sum + item.count,
-        0
-    );
-
-    let pieOffset = 0;
-
-    const pieStops = status
-        .map((item, index) => {
-            const start = pieOffset;
-
-            pieOffset += totalStatus
-                ? (item.count / totalStatus) * 100
-                : 0;
-
-            return `${colors[index % colors.length]
-                } ${start}% ${pieOffset}%`;
-        })
-        .join(",");
 
     return (
         <div className="max-w-7xl mx-auto p-4 sm:p-8">
@@ -692,155 +909,31 @@ export default function AdminContent() {
 
                 <main className="min-w-0 space-y-6">
                     {error && (
-                        <p
-                            role="alert"
-                            className="alert alert-error"
-                        >
+                        <div className="alert alert-error" role="alert">
                             {error}
-                        </p>
+                        </div>
                     )}
 
                     {success && (
-                        <p
-                            role="status"
-                            className="alert alert-success"
-                        >
+                        <div className="alert alert-success" role="status">
                             {success}
-                        </p>
+                        </div>
                     )}
 
                     {section === "Overview" && (
                         <>
                             {!overview ? (
-                                <p>Loading real-time statistics…</p>
+                                <p>Loading statistics...</p>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                        {[
-                                            ["Doctors", overview.doctors],
-                                            ["Appointments", overview.appointments],
-                                            ["Users", overview.users],
-                                            ["Messages", overview.contacts],
-                                        ].map(([label, number]) => (
-                                            <div
-                                                key={label}
-                                                className="card bg-base-200 p-5"
-                                            >
-                                                <p>{label}</p>
-                                                <strong className="text-3xl">
-                                                    {number}
-                                                </strong>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <StatCards overview={overview} />
 
-                                    <div className="grid md:grid-cols-2 gap-5">
-                                        <div className="bg-base-200 rounded-xl p-4">
-                                            <h2 className="font-semibold mb-3">
-                                                Appointments by month (line chart)
-                                            </h2>
-
-                                            {months.length ? (
-                                                <>
-                                                    <svg
-                                                        viewBox="0 0 100 100"
-                                                        width="100%"
-                                                        height="220"
-                                                        role="img"
-                                                        aria-label="Monthly appointments line chart"
-                                                    >
-                                                        <path
-                                                            d="M 5 95 H 95"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="0.4"
-                                                        />
-
-                                                        <polyline
-                                                            points={points}
-                                                            fill="none"
-                                                            stroke={colors[0]}
-                                                            strokeWidth="1.7"
-                                                            vectorEffect="non-scaling-stroke"
-                                                        />
-                                                    </svg>
-
-                                                    <p className="text-sm">
-                                                        {months
-                                                            .map(
-                                                                (item) =>
-                                                                    `${item.name}: ${item.count}`
-                                                            )
-                                                            .join(" · ")}
-                                                    </p>
-                                                </>
-                                            ) : (
-                                                <p>No appointments with dates yet.</p>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-base-200 rounded-xl p-4">
-                                            <h2 className="font-semibold mb-3">
-                                                Doctors by specialty (bar chart)
-                                            </h2>
-
-                                            {specialty.length ? (
-                                                specialty.map((item) => (
-                                                    <ReportBar
-                                                        key={item.name}
-                                                        name={item.name}
-                                                        count={item.count}
-                                                        max={maxSpecialty}
-                                                    />
-                                                ))
-                                            ) : (
-                                                <p>No doctor specialties yet.</p>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-base-200 rounded-xl p-4">
-                                            <h2 className="font-semibold mb-3">
-                                                Appointment status (pie chart)
-                                            </h2>
-
-                                            {totalStatus ? (
-                                                <>
-                                                    <div
-                                                        role="img"
-                                                        aria-label="Status distribution pie chart"
-                                                        className="w-48 h-48 rounded-full mx-auto"
-                                                        style={{
-                                                            background: `conic-gradient(${pieStops})`,
-                                                        }}
-                                                    />
-
-                                                    <div className="mt-3">
-                                                        {status.map((item, index) => (
-                                                            <div
-                                                                key={item.name}
-                                                                className="flex justify-between gap-3"
-                                                            >
-                                                                <span>
-                                                                    <span
-                                                                        className="inline-block w-3 h-3 mr-2"
-                                                                        style={{
-                                                                            background:
-                                                                                colors[index % colors.length],
-                                                                        }}
-                                                                    />
-                                                                    {item.name}
-                                                                </span>
-
-                                                                <span>{item.count}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <p>No appointment statuses yet.</p>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <ReportContent
+                                        overview={overview}
+                                        onRefresh={refreshReports}
+                                        onExport={exportCSV}
+                                        loading={reportBusy}
+                                    />
                                 </>
                             )}
                         </>
@@ -851,7 +944,7 @@ export default function AdminContent() {
                             <div className="flex flex-wrap gap-3 items-end justify-between">
                                 <label className="form-control">
                                     <span className="label-text">
-                                        Search doctor
+                                        Search Doctor
                                     </span>
 
                                     <input
@@ -866,11 +959,11 @@ export default function AdminContent() {
                                 </label>
 
                                 <button
-                                    type="button"
                                     className="btn btn-primary"
+                                    type="button"
                                     onClick={openAdd}
                                 >
-                                    Add doctor
+                                    Add Doctor
                                 </button>
                             </div>
 
@@ -878,7 +971,8 @@ export default function AdminContent() {
                                 <form
                                     ref={formRef}
                                     onSubmit={save}
-                                    className="bg-base-200 rounded-xl p-5 grid sm:grid-cols-2 gap-3"
+                                    noValidate
+                                    className="bg-base-200 rounded-xl p-5 grid sm:grid-cols-2 gap-4"
                                 >
                                     <h2 className="col-span-full text-xl font-bold">
                                         {editing?.id
@@ -886,120 +980,160 @@ export default function AdminContent() {
                                             : "Add New Doctor"}
                                     </h2>
 
-                                    {doctorFields.map((key) => (
-                                        <label
-                                            key={key}
-                                            className="form-control"
-                                        >
-                                            <span className="label-text capitalize">
-                                                {key}
-                                            </span>
+                                    {fields.map((key) => {
+                                        const label =
+                                            key.charAt(0).toUpperCase() +
+                                            key.slice(1);
 
-                                            {key === "availability" ? (
-                                                <textarea
-                                                    className="textarea textarea-bordered w-full min-h-24"
-                                                    value={form.availability ?? ""}
-                                                    onChange={(event) =>
-                                                        setForm((previous) => ({
-                                                            ...previous,
-                                                            availability: event.target.value,
-                                                        }))
-                                                    }
-                                                    placeholder="One availability slot per line"
-                                                />
-                                            ) : (
-                                                <input
-                                                    className="input input-bordered w-full"
-                                                    type={
-                                                        [
-                                                            "fee",
-                                                            "rating",
-                                                            "experience",
-                                                        ].includes(key)
-                                                            ? "number"
-                                                            : key === "image"
-                                                                ? "url"
-                                                                : "text"
-                                                    }
-                                                    min={
-                                                        [
-                                                            "fee",
-                                                            "rating",
-                                                            "experience",
-                                                        ].includes(key)
-                                                            ? 0
-                                                            : undefined
-                                                    }
-                                                    max={
-                                                        key === "rating"
-                                                            ? 5
-                                                            : key === "experience"
-                                                                ? 100
-                                                                : undefined
-                                                    }
-                                                    step={
-                                                        key === "rating"
-                                                            ? "0.1"
-                                                            : ["fee", "experience"].includes(key)
-                                                                ? "1"
-                                                                : undefined
-                                                    }
-                                                    required={[
+                                        const isNumber = [
+                                            "fee",
+                                            "rating",
+                                            "experience",
+                                        ].includes(key);
+
+                                        const isMultiline = [
+                                            "description",
+                                            "availability",
+                                        ].includes(key);
+
+                                        return (
+                                            <label
+                                                key={key}
+                                                className="form-control flex flex-col gap-1"
+                                            >
+                                                <span className="label-text font-medium">
+                                                    {label}
+                                                    {[
                                                         "name",
                                                         "specialty",
                                                         "location",
                                                         "fee",
-                                                    ].includes(key)}
-                                                    value={form[key] ?? ""}
-                                                    onChange={(event) =>
-                                                        setForm((previous) => ({
-                                                            ...previous,
-                                                            [key]: event.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            )}
-                                        </label>
-                                    ))}
+                                                    ].includes(key) && " *"}
+                                                </span>
 
-                                    <label className="form-control col-span-full">
-                                        <span className="label-text font-semibold">
+                                                {isMultiline ? (
+                                                    <textarea
+                                                        className={`textarea textarea-bordered w-full min-h-24 ${fieldErrors[key]
+                                                                ? "textarea-error"
+                                                                : ""
+                                                            }`}
+                                                        value={form[key] ?? ""}
+                                                        maxLength={
+                                                            key === "description"
+                                                                ? 2001
+                                                                : undefined
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateField(
+                                                                key,
+                                                                event.target.value
+                                                            )
+                                                        }
+                                                        placeholder={
+                                                            key === "availability"
+                                                                ? "One availability slot per line"
+                                                                : "Doctor description"
+                                                        }
+                                                        aria-invalid={Boolean(fieldErrors[key])}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        className={`input input-bordered w-full ${fieldErrors[key]
+                                                                ? "input-error"
+                                                                : ""
+                                                            }`}
+                                                        type={
+                                                            isNumber
+                                                                ? "number"
+                                                                : key === "image"
+                                                                    ? "url"
+                                                                    : "text"
+                                                        }
+                                                        min={
+                                                            isNumber ? 0 : undefined
+                                                        }
+                                                        max={
+                                                            key === "rating"
+                                                                ? 5
+                                                                : key === "experience"
+                                                                    ? 100
+                                                                    : undefined
+                                                        }
+                                                        step={
+                                                            key === "rating"
+                                                                ? "0.1"
+                                                                : key === "fee"
+                                                                    ? "1"
+                                                                    : "any"
+                                                        }
+                                                        value={form[key] ?? ""}
+                                                        onChange={(event) =>
+                                                            updateField(
+                                                                key,
+                                                                event.target.value
+                                                            )
+                                                        }
+                                                        aria-invalid={Boolean(fieldErrors[key])}
+                                                    />
+                                                )}
+
+                                                {fieldErrors[key] && (
+                                                    <span
+                                                        className="text-error text-sm"
+                                                        role="alert"
+                                                    >
+                                                        {fieldErrors[key]}
+                                                    </span>
+                                                )}
+                                            </label>
+                                        );
+                                    })}
+
+                                    <label className="form-control col-span-full flex flex-col gap-2">
+                                        <span className="label-text font-medium">
                                             Gallery Images (one HTTPS URL per line)
                                         </span>
 
                                         <textarea
-                                            className="textarea textarea-bordered w-full min-h-32"
+                                            className={`textarea textarea-bordered w-full min-h-32 ${fieldErrors.images
+                                                    ? "textarea-error"
+                                                    : ""
+                                                }`}
                                             value={form.images}
                                             onChange={(event) =>
-                                                setForm((previous) => ({
-                                                    ...previous,
-                                                    images: event.target.value,
-                                                }))
+                                                updateField(
+                                                    "images",
+                                                    event.target.value
+                                                )
                                             }
                                             placeholder={
                                                 "https://example.com/photo-1.jpg\nhttps://example.com/photo-2.jpg"
                                             }
-                                            aria-describedby="gallery-help"
+                                            aria-invalid={Boolean(fieldErrors.images)}
                                         />
 
-                                        <span
-                                            id="gallery-help"
-                                            className="text-sm text-base-content/70 mt-1"
-                                        >
-                                            Add up to 10 different image URLs.
-                                            Use photos you have permission to use.
-                                            The main Image URL is kept separately.
+                                        <span className="text-sm opacity-70">
+                                            Maximum 10 gallery images.
                                         </span>
+
+                                        {fieldErrors.images && (
+                                            <span
+                                                className="text-error text-sm"
+                                                role="alert"
+                                            >
+                                                {fieldErrors.images}
+                                            </span>
+                                        )}
                                     </label>
 
-                                    <div className="col-span-full flex gap-2">
+                                    <div className="col-span-full flex gap-3">
                                         <button
                                             type="submit"
-                                            disabled={busy}
                                             className="btn btn-primary"
+                                            disabled={busy}
                                         >
                                             {busy
-                                                ? "Saving…"
+                                                ? "Saving..."
                                                 : editing?.id
                                                     ? "Update Doctor"
                                                     : "Save Doctor"}
@@ -1009,7 +1143,11 @@ export default function AdminContent() {
                                             type="button"
                                             className="btn"
                                             disabled={busy}
-                                            onClick={() => setEditing(null)}
+                                            onClick={() => {
+                                                setEditing(null);
+                                                setFieldErrors({});
+                                                setError("");
+                                            }}
                                         >
                                             Cancel
                                         </button>
@@ -1017,8 +1155,7 @@ export default function AdminContent() {
                                 </form>
                             )}
 
-                            {/* Doctor sorting controls */}
-                            <div className="bg-base-200 rounded-xl p-4 flex flex-wrap items-end gap-3">
+                            <div className="bg-base-200 rounded-xl p-4 flex flex-wrap gap-3">
                                 <label className="form-control flex-1 min-w-36">
                                     <span className="label-text">
                                         Sort Doctors By
@@ -1041,9 +1178,7 @@ export default function AdminContent() {
                                 </label>
 
                                 <label className="form-control flex-1 min-w-36">
-                                    <span className="label-text">
-                                        Order
-                                    </span>
+                                    <span className="label-text">Order</span>
 
                                     <select
                                         className="select select-bordered w-full"
@@ -1054,10 +1189,10 @@ export default function AdminContent() {
                                         }}
                                     >
                                         <option value="asc">
-                                            Ascending (Low to High / A to Z)
+                                            Ascending (A-Z / Low-High)
                                         </option>
                                         <option value="desc">
-                                            Descending (High to Low / Z to A)
+                                            Descending (Z-A / High-Low)
                                         </option>
                                     </select>
                                 </label>
@@ -1066,7 +1201,7 @@ export default function AdminContent() {
                     )}
 
                     {section === "Users" && (
-                        <div className="bg-base-200 rounded-xl p-4 flex flex-wrap items-end gap-3">
+                        <div className="bg-base-200 rounded-xl p-4 flex flex-wrap gap-3">
                             <label className="form-control flex-1 min-w-36">
                                 <span className="label-text">
                                     Sort Users By
@@ -1089,9 +1224,7 @@ export default function AdminContent() {
                             </label>
 
                             <label className="form-control flex-1 min-w-36">
-                                <span className="label-text">
-                                    Order
-                                </span>
+                                <span className="label-text">Order</span>
 
                                 <select
                                     className="select select-bordered w-full"
@@ -1101,12 +1234,8 @@ export default function AdminContent() {
                                         setPage(1);
                                     }}
                                 >
-                                    <option value="desc">
-                                        Descending (Newest / Z to A)
-                                    </option>
-                                    <option value="asc">
-                                        Ascending (Oldest / A to Z)
-                                    </option>
+                                    <option value="desc">Descending</option>
+                                    <option value="asc">Ascending</option>
                                 </select>
                             </label>
                         </div>
@@ -1114,7 +1243,7 @@ export default function AdminContent() {
 
                     {["Doctors", "Users", "Messages"].includes(section) && (
                         <>
-                            <div className="overflow-x-auto bg-base-100 rounded-xl border border-base-300">
+                            <div className="overflow-x-auto rounded-xl border border-base-300">
                                 <table className="table table-zebra">
                                     <thead>
                                         <tr>
@@ -1140,8 +1269,8 @@ export default function AdminContent() {
                                                             "Subject",
                                                             "Date",
                                                         ]
-                                            ).map((label) => (
-                                                <th key={label}>{label}</th>
+                                            ).map((item) => (
+                                                <th key={item}>{item}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -1155,7 +1284,6 @@ export default function AdminContent() {
                                                         <td>{row.specialty}</td>
                                                         <td>{row.location}</td>
                                                         <td>{row.fee}</td>
-
                                                         <td>
                                                             <div className="flex gap-2">
                                                                 <button
@@ -1169,8 +1297,8 @@ export default function AdminContent() {
                                                                 <button
                                                                     type="button"
                                                                     className="btn btn-xs btn-error"
-                                                                    onClick={() => remove(row.id)}
                                                                     disabled={busy}
+                                                                    onClick={() => remove(row.id)}
                                                                 >
                                                                     Delete
                                                                 </button>
@@ -1189,9 +1317,7 @@ export default function AdminContent() {
                                                         <td>{row.name}</td>
                                                         <td>{row.email}</td>
                                                         <td>
-                                                            {row.emailVerified
-                                                                ? "Yes"
-                                                                : "No"}
+                                                            {row.emailVerified ? "Yes" : "No"}
                                                         </td>
                                                         <td>
                                                             {row.createdAt
@@ -1221,23 +1347,21 @@ export default function AdminContent() {
                                 </table>
 
                                 {busy && (
-                                    <p className="p-4">Loading…</p>
+                                    <p className="p-4">Loading...</p>
                                 )}
 
                                 {!busy && table?.items?.length === 0 && (
-                                    <p className="p-4">
-                                        No records found.
-                                    </p>
+                                    <p className="p-4">No records found.</p>
                                 )}
                             </div>
 
-                            <div className="flex justify-between items-center">
+                            <div className="flex items-center justify-between">
                                 <button
                                     type="button"
                                     className="btn"
-                                    disabled={page <= 1 || busy}
+                                    disabled={busy || page <= 1}
                                     onClick={() =>
-                                        setPage((previous) => previous - 1)
+                                        setPage((current) => current - 1)
                                     }
                                 >
                                     Previous
@@ -1252,10 +1376,10 @@ export default function AdminContent() {
                                     type="button"
                                     className="btn"
                                     disabled={
-                                        page >= (table?.pages || 1) || busy
+                                        busy || page >= (table?.pages || 1)
                                     }
                                     onClick={() =>
-                                        setPage((previous) => previous + 1)
+                                        setPage((current) => current + 1)
                                     }
                                 >
                                     Next
@@ -1265,155 +1389,18 @@ export default function AdminContent() {
                     )}
 
                     {section === "Reports" && (
-                        <div className="space-y-5">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h2 className="text-2xl font-bold">
-                                    Live Reports
-                                </h2>
-
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        disabled={reportBusy}
-                                        onClick={loadOverview}
-                                    >
-                                        {reportBusy
-                                            ? "Refreshing…"
-                                            : "Refresh Reports"}
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        disabled={!overview || reportBusy}
-                                        onClick={exportCSV}
-                                    >
-                                        Export CSV
-                                    </button>
-                                </div>
-                            </div>
-
-                            {!overview ? (
-                                <p>Loading reports…</p>
-                            ) : (
-                                <>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                        {[
-                                            ["Total Doctors", overview.doctors],
-                                            [
-                                                "Total Appointments",
-                                                overview.appointments,
-                                            ],
-                                            ["Total Users", overview.users],
-                                            [
-                                                "Contact Messages",
-                                                overview.contacts,
-                                            ],
-                                        ].map(([label, value]) => (
-                                            <div
-                                                key={label}
-                                                className="rounded-xl bg-base-200 p-5"
-                                            >
-                                                <p className="text-sm">{label}</p>
-                                                <strong className="text-3xl">
-                                                    {value}
-                                                </strong>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="grid gap-5 lg:grid-cols-2">
-                                        <div className="rounded-xl bg-base-200 p-5">
-                                            <h3 className="mb-4 text-lg font-bold">
-                                                Monthly Appointments
-                                            </h3>
-
-                                            {months.length === 0 ? (
-                                                <p>No monthly data available.</p>
-                                            ) : (
-                                                months.map((item) => (
-                                                    <ReportBar
-                                                        key={item.name}
-                                                        name={item.name}
-                                                        count={item.count}
-                                                        max={maxMonth}
-                                                    />
-                                                ))
-                                            )}
-                                        </div>
-
-                                        <div className="rounded-xl bg-base-200 p-5">
-                                            <h3 className="mb-4 text-lg font-bold">
-                                                Doctors by Specialty
-                                            </h3>
-
-                                            {specialty.length === 0 ? (
-                                                <p>No specialty data available.</p>
-                                            ) : (
-                                                specialty.map((item) => (
-                                                    <ReportBar
-                                                        key={item.name}
-                                                        name={item.name}
-                                                        count={item.count}
-                                                        max={maxSpecialty}
-                                                    />
-                                                ))
-                                            )}
-                                        </div>
-
-                                        <div className="rounded-xl bg-base-200 p-5 lg:col-span-2">
-                                            <h3 className="mb-4 text-lg font-bold">
-                                                Appointment Status Report
-                                            </h3>
-
-                                            {status.length === 0 ? (
-                                                <p>
-                                                    No appointment status data available.
-                                                </p>
-                                            ) : (
-                                                <div className="overflow-x-auto">
-                                                    <table className="table table-zebra w-full">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Status</th>
-                                                                <th>Appointments</th>
-                                                                <th>Percentage</th>
-                                                            </tr>
-                                                        </thead>
-
-                                                        <tbody>
-                                                            {status.map((item) => (
-                                                                <tr key={item.name}>
-                                                                    <td>{item.name}</td>
-                                                                    <td>{item.count}</td>
-                                                                    <td>
-                                                                        {totalStatus
-                                                                            ? (
-                                                                                (item.count /
-                                                                                    totalStatus) *
-                                                                                100
-                                                                            ).toFixed(1)
-                                                                            : "0.0"}
-                                                                        %
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        <ReportContent
+                            overview={overview}
+                            onRefresh={refreshReports}
+                            onExport={exportCSV}
+                            loading={reportBusy}
+                        />
                     )}
 
                     {section === "Settings" && (
-                        <AdminSettings
-                            user={session?.user}
-                            onNavigate={navigate}
+                        <SettingsContent
+                            user={session.user}
+                            navigate={navigate}
                         />
                     )}
                 </main>
