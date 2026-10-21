@@ -1,126 +1,345 @@
 
-# DocAppoint
+# DocAppoint - Doctor Appointment Management System
 
-DocAppoint is a full-stack doctor appointment booking and management application built with Next.js, Express.js, MongoDB, and Better Auth.
+DocAppoint is a full-stack doctor appointment booking and management web application built with Next.js, React, Express.js, and MongoDB.
+
+The application allows patients to explore doctors, book appointments, manage their bookings, and update their profiles. Administrators can manage doctors, users, reports, and contact messages.
 
 ## Live Website
 
-https://doc-appoint-client-three.vercel.app/
+https://doc-appoint-client-three.vercel.app
 
 ## GitHub Repositories
 
-**Frontend:** https://github.com/sumaya-jahan/DocAppoint-Client
+Frontend:
+https://github.com/sumaya-jahan/DocAppoint-Client/tree/docappoint-upgrade
 
-**Backend:** https://github.com/sumaya-jahan/DocAppoint-Server
+Backend:
+https://github.com/sumaya-jahan/DocAppoint-Server/tree/docappoint-upgrade
 
-## Key Features
+## Demo Login Credentials
 
-### Authentication
-- User registration and login
-- Google login
-- Forgot and reset password
-- Demo user login
-- Role-based access for users and administrators
+### User Account
 
-### Doctor Management
-- Dynamic doctor listings from MongoDB
-- Search by doctor name
-- Filter by specialty and location
-- Sort by consultation fee
-- Doctor details with multiple-image gallery
-- Admin doctor management: add, edit and delete
+Email: testuser123@example.com  
+Password: Abc123
 
-### Appointment Management
-- Book appointments
-- View personal bookings
-- Update appointments
-- Delete appointments
-- Protected appointment operations
+### Admin Account
 
-### User Dashboard
-- View account information
-- Edit profile
-- Upload profile pictures using Cloudinary
-- Manage appointments
+Email: sumayajahan765@gmail.com  
+Password: 123456Aa
 
-### Admin Dashboard
-- Overview with live statistics
-- Doctor management
-- User list
-- Contact messages
-- Reports with charts and tables
-- CSV report export
-- Account settings and management links
-
-### Additional Features
-- Responsive desktop, tablet and mobile design
-- Light and dark themes
-- Contact form connected to MongoDB
-- Loading states and error messages
-- Custom 404 page
-
-## Technology Stack
+## Technologies Used
 
 ### Frontend
 - Next.js 16
 - React
 - Tailwind CSS
 - DaisyUI
-- Better Auth Client
-- React Hot Toast
+- JavaScript
 
 ### Backend
 - Node.js
 - Express.js
 - MongoDB Atlas
 - Better Auth
+- JWT Plugin
 - Cloudinary
-- Multer
+- Resend
 
 ### Deployment
-- Vercel: Frontend
-- Render: Backend
-- MongoDB Atlas: Database
-- Cloudinary: Profile image storage
+- Frontend: Vercel
+- Backend: Render
+- Database: MongoDB Atlas
 
-## Local Setup
+## Features
 
-### Frontend
+### 1. Responsive User Interface
+
+- Responsive layouts for mobile, tablet, and desktop
+- Light and dark theme support
+- Navigation bar with dropdown menus
+- Reusable interface components
+- Loading indicators and skeleton screens
+- Error and success feedback
+
+### 2. Home Page
+
+- Hero section with appointment booking call-to-action
+- Featured doctors
+- Medical specialties
+- Healthcare service information
+- Service statistics
+- Informational sections
+- Footer with navigation and support links
+
+### 3. Doctor Exploration
+
+- Dynamic doctor listing from MongoDB
+- Search doctors by name
+- Filter doctors by specialty and location
+- Sort doctors by available options
+- Pagination
+- Doctor profile images
+- Doctor details pages
+- Doctor profile information and related doctors
+
+### 4. Appointment Booking
+
+Authenticated users can:
+
+- Book doctor appointments
+- View their appointments
+- Update appointment details
+- Cancel or delete appointments
+
+Appointment data is managed through backend APIs.
+
+### 5. Authentication
+
+- User registration
+- Email and password login
+- Forgot password
+- Reset password via email
+- Authentication session management
+- Protected routes
+- User and administrator role verification
+- Profile password change
+
+Authentication is handled using Better Auth.
+
+### 6. User Dashboard
+
+The user dashboard includes:
+
+- Overview
+- My Bookings
+- My Profile
+- Settings
+
+Users can:
+
+- Review appointment information
+- Manage bookings
+- Update their names
+- Update profile images
+- Change account passwords
+- Access account settings
+
+### 7. Admin Dashboard
+
+The administrator dashboard includes:
+
+- Overview
+- Doctors
+- Users
+- Reports
+- Messages
+- Settings
+
+Administrator features include:
+
+- Doctor management (Create, Read, Update, Delete)
+- Doctor search and sorting
+- User management and sorting
+- Pagination
+- Dashboard statistics
+- Charts and reports
+- CSV export
+- Contact message management
+- Doctor form validation
+
+### 8. Additional Pages
+
+- About Us
+- Contact Us
+- Help and Support
+- Privacy Policy
+- Login
+- Registration
+- Forgot Password
+- Reset Password
+
+Contact messages are submitted through the backend and saved in the database.
+
+## Project Structure
+
+```text
+DocAppoint-Client/
+├── public/
+├── src/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── assets/
+├── next.config.mjs
+├── package.json
+└── README.md
+```
+
+## Installation and Setup
+
+### Step 1: Clone the Project
+
+```bash
+git clone -b docappoint-upgrade https://github.com/sumaya-jahan/DocAppoint-Client.git
+```
+
+### Step 2: Open the Project
+
+```bash
+cd DocAppoint-Client
+```
+
+### Step 3: Install Dependencies
 
 ```bash
 npm install
-npm run dev
 ```
 
-Create `.env.local`:
+### Step 4: Configure Environment
+
+Create a `.env.local` file if needed for your frontend API configuration.
+
+Example:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-Open http://localhost:3000
+Use the deployed backend URL or relative API routes for production.
 
-### Backend
+### Step 5: Start Development Server
 
 ```bash
-npm install
 npm run dev
 ```
 
-Configure the required server environment variables using the project's server configuration.
+Open:
 
-Never commit `.env` files, database credentials, API secrets, or authentication secrets.
+http://localhost:3000
 
-## Demo Login
+### Step 6: Production Build
 
-The Login page includes a **Fill Demo Login** button for a dedicated demo user account.
+```bash
+npm run build
+```
 
-Use the demo account only for demonstration purposes. Do not use a personal or administrator account for public demo access.
+## Backend Setup
 
-## Project Status
+Backend Repository:
 
-Core authentication, doctor browsing, booking, profile management, admin dashboard, reports and deployment have been implemented and manually tested.
+https://github.com/sumaya-jahan/DocAppoint-Server/tree/docappoint-upgrade
 
-## Author
+Clone the backend:
 
-DocAppoint Project Team
+```bash
+git clone -b docappoint-upgrade https://github.com/sumaya-jahan/DocAppoint-Server.git
+```
+
+Install dependencies:
+
+```bash
+cd DocAppoint-Server
+npm install
+```
+
+Configure the backend environment variables:
+
+```env
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+BETTER_AUTH_SECRET=your_auth_secret
+BETTER_AUTH_URL=http://localhost:5000
+CLIENT_URL=http://localhost:3000
+
+RESEND_API_KEY=your_resend_api_key
+
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+```
+
+Start the backend:
+
+```bash
+npm run dev
+```
+
+## Backend API Features
+
+The backend provides:
+
+- Doctor listing and doctor details
+- Doctor search, filters, sorting, and pagination
+- Appointment creation, update, and deletion
+- Contact form submission
+- User dashboard information
+- Administrator dashboard information
+- Doctor management APIs
+- User management APIs
+- Profile image upload
+- Authentication endpoints
+
+## Security
+
+The application includes:
+
+- Authentication with Better Auth
+- Administrator role verification
+- Protected user endpoints
+- Appointment ownership verification
+- Input validation
+- Error handling
+- CORS configuration
+- Authentication cookie configuration
+- Environment variables for service credentials
+
+Better Auth includes a JWT plugin in the backend configuration. Protected application routes currently use authenticated session verification.
+
+## Deployment
+
+### Frontend
+
+Hosted on Vercel:
+
+https://doc-appoint-client-three.vercel.app
+
+### Backend
+
+Hosted on Render:
+
+https://docappoint-server-2.onrender.com
+
+### Database
+
+MongoDB Atlas
+
+### Image Storage
+
+Cloudinary
+
+### Email Service
+
+Resend
+
+## Testing
+
+Important workflows to verify before submission:
+
+1. Register and log in as a user
+2. Browse and search doctors
+3. Filter and sort doctor listings
+4. Open doctor details
+5. Book and manage appointments
+6. Open the user dashboard
+7. Update profile information
+8. Log in as an administrator
+9. Create, edit, and delete doctors
+10. View administrator dashboard statistics
+11. Send a contact message
+12. Test mobile responsiveness
+
+## Academic Project
+
+DocAppoint was developed as a full-stack web development assignment to demonstrate responsive frontend design, database integration, authentication, role-based dashboards, CRUD operations, and production deployment.
